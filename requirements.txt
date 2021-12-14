@@ -8,7 +8,7 @@ pandas
 scikit-learn
 
 # optional
-ptpython
-ipykernel
-plotly
-ipdb
+# ptpython
+# ipykernel
+# plotly
+# ipdb
