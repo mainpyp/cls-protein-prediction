@@ -1,0 +1,14 @@
+torch
+torchvision
+timm==0.3.2
+requests
+matplotlib
+h5py
+pandas
+scikit-learn
+
+# optional
+ptpython
+ipykernel
+plotly
+ipdb
