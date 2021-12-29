@@ -24,9 +24,10 @@ class TMHLoader(Dataset):
         return self.df[item], self.labels[item]
 
 class TMH(LightningDataModule):
-    def __init__(self, data_root: Path):
+    def __init__(self, cfg):
         super().__init__()
 
+        self.cfg = cfg
         self.label_mappings = {
             'G_SP': 0,
             'G': 1,
@@ -34,16 +35,16 @@ class TMH(LightningDataModule):
             'TM': 3
         }
         self.reverse_label_mappings = {val: key for key, val in self.label_mappings.items()}
-        self.data_root = data_root
 
     def prepare_data(self):
-        embeddings_prot = h5py.File(self.data_root / "embeddings.h5", "r")
+        root = Path(self.cfg.data_root)
+        embeddings_prot = h5py.File(root / "embeddings.h5", "r")
 
-        with open(self.data_root / "seq_anno_hash.pickle", 'rb') as handle:
+        with open(root / "seq_anno_hash.pickle", 'rb') as handle:
             proteins_and_hashes = pickle.load(handle)
 
-        all_labels = pd.read_csv(self.data_root / "data_splits/train_prot_id_labels.csv")
-        X_test = pd.read_csv(self.data_root / "data_splits/test_prot_id_labels.csv")
+        all_labels = pd.read_csv(root / "data_splits/train_prot_id_labels.csv")
+        X_test = pd.read_csv(root / "data_splits/test_prot_id_labels.csv")
 
         X_train, X_val = train_test_split(all_labels,
                                            test_size=0.3,
@@ -67,6 +68,7 @@ class TMH(LightningDataModule):
         }
 
     def _parse(self, split, proteins_and_hashes, embeddings_prot):
+        # TODO: optimize this whole method
         embeddings = []
         labels = []
         protein_ids = []
