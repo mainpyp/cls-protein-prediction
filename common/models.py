@@ -7,7 +7,7 @@ class MLP(nn.Module):
     Then the embeddings are Flattened and forwarded into two FCls.
     The last layer is a FCL with 10 neurons.
     """
-    def __init__(self):
+    def __init__(self, cfg):
         super().__init__()
         self.fc1 = nn.Linear(1024, 512)  # in channels -> 16 * 5 ^ 2 (kernel size 5)
         self.fc2 = nn.Linear(512, 256)
@@ -29,7 +29,7 @@ class CNN(nn.Module):
     Then the embeddings are Flattened and forwarded into two FCls.
     The last layer is a FCL with 10 neurons.
     """
-    def __init__(self):
+    def __init__(self, cfg):
         super().__init__()
         self.conv1 = nn.Conv1d(1, 6, kernel_size=3, padding=1, stride=1)
         self.pool = nn.MaxPool1d(2)

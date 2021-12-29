@@ -8,6 +8,7 @@ matplotlib
 h5py
 pandas
 scikit-learn
+configargparse
 
 # optional
 # ptpython
