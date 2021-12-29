@@ -1,15 +1,31 @@
+import pickle
+from pathlib import Path
+
 import h5py
 import numpy as np
 import pandas as pd
-import pickle
 import torch
+from pytorch_lightning import LightningDataModule
 from sklearn.model_selection import train_test_split
 from torch.nn.functional import one_hot
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import Dataset, DataLoader
 
 
-class TMH(TensorDataset):
-    def __init__(self, embeddings_path, protein_hashes_path, train_ids):
+class TMHLoader(Dataset):
+    def __init__(self, df, labels):
+        super().__init__()
+        self.df = df
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, item):
+        return self.df[item], self.labels[item]
+
+class TMH(LightningDataModule):
+    def __init__(self, data_root: Path):
+        super().__init__()
 
         self.label_mappings = {
             'G_SP': 0,
@@ -18,24 +34,43 @@ class TMH(TensorDataset):
             'TM': 3
         }
         self.reverse_label_mappings = {val: key for key, val in self.label_mappings.items()}
+        self.data_root = data_root
 
-        embeddings_prot = h5py.File(embeddings_path, "r")
+    def prepare_data(self):
+        embeddings_prot = h5py.File(self.data_root / "embeddings.h5", "r")
 
-        with open(protein_hashes_path, 'rb') as handle:
+        with open(self.data_root / "seq_anno_hash.pickle", 'rb') as handle:
             proteins_and_hashes = pickle.load(handle)
 
-        label_prot = pd.read_csv(train_ids)
+        all_labels = pd.read_csv(self.data_root / "data_splits/train_prot_id_labels.csv")
+        X_test = pd.read_csv(self.data_root / "data_splits/test_prot_id_labels.csv")
 
-        X_train, X_test = train_test_split(label_prot, 
-        test_size=0.3, 
-        train_size=0.7, 
-        random_state=42, 
-        stratify=label_prot["label"])
+        X_train, X_val = train_test_split(all_labels,
+                                           test_size=0.3,
+                                           train_size=0.7,
+                                           random_state=42,
+                                           stratify=all_labels["label"])
 
+        train_embed, train_labels = self._parse(X_train, proteins_and_hashes, embeddings_prot)
+        val_embed, val_labels = self._parse(X_val, proteins_and_hashes, embeddings_prot)
+        test_embed, test_labels = self._parse(X_test, proteins_and_hashes, embeddings_prot)
+
+        self.embeddings = {
+            "train": train_embed,
+            "val": val_embed,
+            "test": test_embed
+        }
+        self.labels = {
+            "train": train_labels,
+            "val": val_labels,
+            "test": test_labels
+        }
+
+    def _parse(self, split, proteins_and_hashes, embeddings_prot):
         embeddings = []
         labels = []
         protein_ids = []
-        for index, row in X_train.iterrows():
+        for index, row in split.iterrows():
             hash_code = proteins_and_hashes[row["label"]][row["prot_id"]][2]
             if hash_code == '':
                 continue
@@ -44,8 +79,22 @@ class TMH(TensorDataset):
             labels.append(row["label"])
             protein_ids.append(row["prot_id"])
 
-        embeddings = torch.Tensor(embeddings)
-        labels = torch.Tensor([self.label_mappings[label] for label in  labels])
+        labels = torch.Tensor([self.label_mappings[label] for label in labels])
         labels = one_hot(labels.to(torch.int64), 4)
+        return torch.Tensor(embeddings), labels
 
-        super().__init__(embeddings, labels)
+    def _dataloader(self, mode):
+        dataloader = TMHLoader(df=self.embeddings[mode], labels=self.labels[mode])
+        return DataLoader(dataset=dataloader,
+                          shuffle=mode == "train",
+                          num_workers=0, #TODO: load from cfg
+                          batch_size=2)
+
+    def train_dataloader(self):
+        return self._dataloader(mode="train")
+
+    def val_dataloader(self):
+        return self._dataloader(mode="val")
+
+    def test_dataloader(self):
+        return self._dataloader(mode="test")
