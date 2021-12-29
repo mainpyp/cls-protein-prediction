@@ -1,6 +1,8 @@
-torch==1.8.1 
-torchvision==0.9.1
-timm==0.3.2
+biopython
+dnachisel
+torch #==1.8.1
+torchvision #==0.9.1
+timm #==0.3.2
 requests
 matplotlib
 h5py
