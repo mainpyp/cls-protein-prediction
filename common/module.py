@@ -24,7 +24,7 @@ class CaitModule(LightningModule):
         }
 
     def _generic_epoch_end(self, outputs, mode):
-        preds = torch.sigmoid(torch.cat([d[f"{mode}_pred"] for d in outputs]).detach().cpu()).argmax(dim=1).int().numpy()
+        preds = torch.sigmoid(torch.cat([d[f"{mode}_pred"].argmax(dim=1) for d in outputs]).detach().cpu()).int().numpy()
         labels = torch.cat([d[f"{mode}_label"] for d in outputs]).detach().cpu().int().numpy()
         cm = ConfusionMatrix(actual_vector=labels, predict_vector=preds)
         # TODO: log cm image
