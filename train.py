@@ -19,25 +19,20 @@ def load_cfg():
     mode_group.add_argument("--mode", type=str, default='TRAIN')
     mode_group.add_argument("--on_cluster", action="store_true")
     mode_group.add_argument("--logdir", type=str, default="logs")
-    mode_group.add_argument("--checkpoint", type=str, default="")
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TRAINER ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    trainer_group = parser.add_argument_group(title='Trainer options')
-    trainer_group.add_argument("--min_epochs", default=5, type=int)
-    trainer_group.add_argument("--max_epochs", default=500, type=int)
-    trainer_group.add_argument("--early_stopping_metric", type=str, default="val_acc")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TRAINING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     training_group = parser.add_argument_group(title='Training options')
     training_group.add_argument("--gpus", type=int, default=-1)
+    training_group.add_argument("--early_stopping_metric", type=str, default="val_acc")
     training_group.add_argument("--optimizer", type=str, default='Adam')
     training_group.add_argument("--learning_rate", type=float, default=1e-3)
+    training_group.add_argument("--checkpoint", type=str, default="")
     training_group.add_argument('--no-weighted_loss', dest='weighted_loss', action='store_false')
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DATALOADER ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     dataloader_group = parser.add_argument_group(title='Dataloader options')
     dataloader_group.add_argument("--num_workers", type=int, default=0)
-    dataloader_group.add_argument("--batch_size", type=int, default=2)
+    dataloader_group.add_argument("--batch_size", type=int, default=32)
     dataloader_group.add_argument("--data_root", type=str, default=".")
     dataloader_group.add_argument("--num_classes", type=int, default=4)
     dataloader_group.add_argument("--dataset_val_percentage", type=float, default=0.1)
@@ -86,9 +81,7 @@ def train(cfg):
     trainer = Trainer(
         logger=logger,
         callbacks=callbacks,
-        gpus=cfg.gpus if torch.cuda.is_available() else 0,
-        min_epochs=cfg.min_epochs,
-        max_epochs=cfg.max_epochs
+        gpus=cfg.gpus if torch.cuda.is_available() else 0
     )
 
     print(f"start fitting {cfg.model} to TMH dataset...")
