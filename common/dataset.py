@@ -1,27 +1,29 @@
-import pickle
+import hashlib
+from io import StringIO
 from pathlib import Path
+from typing import List
 
 import h5py
 import numpy as np
 import pandas as pd
-import torch
+from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
+from dnachisel.biotools import reverse_translate
 from pytorch_lightning import LightningDataModule
-from sklearn.model_selection import train_test_split
-from torch.nn.functional import one_hot
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
+from tqdm import tqdm
 
 
 class TMHLoader(Dataset):
-    def __init__(self, df, labels):
+    def __init__(self, df):
         super().__init__()
         self.df = df
-        self.labels = labels
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, item):
-        return self.df[item], self.labels[item]
+        return self.df.loc[item, "embedding"], self.df.loc[item, "class"]
 
 class TMH(LightningDataModule):
     def __init__(self, cfg):
@@ -29,68 +31,36 @@ class TMH(LightningDataModule):
 
         self.cfg = cfg
         self.label_mappings = {
-            'G_SP': 0,
-            'G': 1,
-            'SP_TM': 2,
+            'Glob_SP': 0,
+            'Glob': 1,
+            'TM_SP': 2,
             'TM': 3
         }
         self.reverse_label_mappings = {val: key for key, val in self.label_mappings.items()}
 
     def prepare_data(self):
         root = Path(self.cfg.data_root)
-        embeddings_prot = h5py.File(root / "embeddings.h5", "r")
+        processed_df_path = root / "processed.pkl"
 
-        with open(root / "seq_anno_hash.pickle", 'rb') as handle:
-            proteins_and_hashes = pickle.load(handle)
+        if processed_df_path.exists() and not self.cfg.reload_data:
+            print("Processed dataset found, loading pickle.")
+            df = pd.read_pickle(processed_df_path)
+        else:
+            print("No processed dataset found, loading from scratch...")
+            df = self._reload_data(data_root=root)
+            df.to_pickle(processed_df_path)
 
-        all_labels = pd.read_csv(root / "data_splits/train_prot_id_labels.csv")
-        X_test = pd.read_csv(root / "data_splits/test_prot_id_labels.csv")
+        dataloader = TMHLoader(df)
+        val_items = int(len(dataloader) * self.cfg.dataset_val_percentage)
+        test_items = int(len(dataloader) * self.cfg.dataset_test_percentage)
+        train_items = len(dataloader)-val_items-test_items
+        train_set, val_set, test_set = random_split(dataloader, lengths=[train_items, val_items, test_items])
 
-        X_train, X_val = train_test_split(all_labels,
-                                           test_size=0.3,
-                                           train_size=0.7,
-                                           random_state=42,
-                                           stratify=all_labels["label"])
-
-        train_embed, train_labels = self._parse(X_train, proteins_and_hashes, embeddings_prot)
-        val_embed, val_labels = self._parse(X_val, proteins_and_hashes, embeddings_prot)
-        test_embed, test_labels = self._parse(X_test, proteins_and_hashes, embeddings_prot)
-
-        self.embeddings = {
-            "train": train_embed,
-            "val": val_embed,
-            "test": test_embed
+        self.datasets = {
+            "train": train_set,
+            "val": val_set,
+            "test": test_set
         }
-        self.labels = {
-            "train": train_labels,
-            "val": val_labels,
-            "test": test_labels
-        }
-
-    def _parse(self, split, proteins_and_hashes, embeddings_prot):
-        # TODO: optimize this whole method
-        embeddings = []
-        labels = []
-        protein_ids = []
-        for index, row in split.iterrows():
-            hash_code = proteins_and_hashes[row["label"]][row["prot_id"]][2]
-            if hash_code == '':
-                continue
-            mean_embedding = np.mean(embeddings_prot.get(hash_code), axis=0)
-            embeddings.append(mean_embedding)
-            labels.append(row["label"])
-            protein_ids.append(row["prot_id"])
-
-        labels = torch.Tensor([self.label_mappings[label] for label in labels])
-        labels = one_hot(labels.to(torch.int64), 4)
-        return torch.Tensor(embeddings), labels
-
-    def _dataloader(self, mode):
-        dataloader = TMHLoader(df=self.embeddings[mode], labels=self.labels[mode])
-        return DataLoader(dataset=dataloader,
-                          shuffle=mode == "train",
-                          num_workers=0, #TODO: load from cfg
-                          batch_size=2)
 
     def train_dataloader(self):
         return self._dataloader(mode="train")
@@ -100,3 +70,48 @@ class TMH(LightningDataModule):
 
     def test_dataloader(self):
         return self._dataloader(mode="test")
+
+    def _dataloader(self, mode):
+        return DataLoader(dataset=self.datasets[mode],
+                          shuffle=mode == "train",
+                          num_workers=self.cfg.num_workers,
+                          batch_size=self.cfg.batch_size)
+
+    def _parse_3line(self, path: str, label: str) -> List[SeqRecord]:
+        file = open(path)
+
+        def record_for(id: str, seq: str, anno: str) -> SeqRecord:
+            amino_seq = seq.strip().replace('X', '*')
+            base_seq = reverse_translate(amino_seq)
+            # put back together to feed into SeqIO
+            # alternative would be to manually construct SeqRecord here
+            record = SeqIO.read(StringIO(id + base_seq), "fasta")
+            record.annotations["tmh"] = anno.strip()
+            record.annotations["label"] = self.label_mappings[label]
+            assert record.translate().seq == amino_seq  # sanity check
+            return record
+
+        return [record_for(id, seq, anno) for id, seq, anno in zip(file, file, file)]
+
+    def _as_dict(self, record: SeqRecord, embeddings_file) -> dict:
+        seq = str(record.translate().seq)
+        hash = hashlib.md5(seq.encode("UTF-8")).hexdigest()
+        embedding = embeddings_file.get(hash)
+        mean_embedding = np.mean(embedding, axis=0) if embedding is not None else np.zeros(1024)
+        return {
+            "protein": record.name,
+            "base_seq": str(record.seq),
+            "seq": seq,
+            "seq_anno": record.annotations["tmh"],
+            "seq_hash": hash,
+            "embedding": mean_embedding.astype(np.float32),
+            "class": record.annotations["label"]
+        }
+
+    def _reload_data(self, data_root: Path):
+        embeddings = h5py.File(data_root / "embeddings.h5")
+        labels = list(self.label_mappings.keys())
+        all_dicts = [self._as_dict(record, embeddings)
+                     for label in tqdm(labels)
+                     for record in tqdm(self._parse_3line(data_root / f"labels/{label}.3line", label=label))]
+        return pd.DataFrame(all_dicts)
