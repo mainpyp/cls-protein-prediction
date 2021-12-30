@@ -1,5 +1,6 @@
 biopython
 dnachisel
+pytorch_lightning
 torch #==1.8.1
 torchvision #==0.9.1
 timm #==0.3.2
@@ -10,6 +11,7 @@ pandas
 configargparse
 pathlib
 tqdm
+pycm
 
 # optional
 # ptpython
