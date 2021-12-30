@@ -95,10 +95,7 @@ class CaiT(nn.Module):
             
         self.num_classes = num_classes
         self.num_features = self.embed_dim = embed_dim
-
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        # self.pos_embed = nn.Parameter(torch.zeros(1, max(1, num_patches), embed_dim))
-        # self.pos_drop = nn.Dropout(p=drop_rate)
 
         dpr = [drop_path_rate for i in range(depth)] 
         self.blocks = nn.ModuleList([
@@ -140,21 +137,8 @@ class CaiT(nn.Module):
         self.norm = nn.LayerNorm(embed_dim)
         self.head = nn.Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity()
 
-        # trunc_normal_(self.pos_embed, std=.02)
         trunc_normal_(self.cls_token, std=.02)
         self.apply(self._init_weights)
-
-        # TODO: load pretrained weights partially
-    #     if pretrained:
-    #         checkpoint = torch.hub.load_state_dict_from_url(
-    #             url="https://dl.fbaipublicfiles.com/deit/XXS24_224.pth",
-    #             map_location="cpu", check_hash=True
-    #         )
-    #         checkpoint_no_module = {}
-    #         for k in model.state_dict().keys():
-    #             checkpoint_no_module[k] = checkpoint["model"]['module.'+k]
-    #
-    #         model.load_state_dict(checkpoint_no_module)
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
@@ -170,13 +154,15 @@ class CaiT(nn.Module):
         return {'pos_embed', 'cls_token'}
 
     def forward(self, x):
-        B = x.shape[0]
+        B, N, C = x.shape
 
         cls_tokens = self.cls_token.expand(B, -1, -1)
 
         # TODO: should we have pos embedding?
         # x = x + self.pos_embed
         # x = self.pos_drop(x)
+
+        # reduce word length to 1
         x = x.mean(dim=1, keepdim=True)
 
         for i, blk in enumerate(self.blocks):
@@ -188,6 +174,6 @@ class CaiT(nn.Module):
         x = torch.cat((cls_tokens, x), dim=1)
 
         x = self.norm(x)
-        x = x[:, 0]
+        x = x[:, 0] # we discard all outputs except the cls token one
         x = self.head(x)
         return x
