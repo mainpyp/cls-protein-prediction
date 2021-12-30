@@ -4,7 +4,7 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from common.cait_models import cait_models
+from common.cait_models import CaiT
 from common.dataset import TMH
 from common.models import CNN, MLP
 from common.module import CaitModule
@@ -74,7 +74,7 @@ def train(cfg):
     elif cfg.model == "CNN":
         model = CNN(cfg=cfg)
     elif cfg.model == "CaiT":
-        model = cait_models()
+        model = CaiT()
     else:
         raise RuntimeError(f"Unsupported model {cfg.model}")
     print("loading module...")
