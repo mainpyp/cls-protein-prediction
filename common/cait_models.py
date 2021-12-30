@@ -1,3 +1,6 @@
+# mostly from https://github.com/facebookresearch/deit/blob/main/cait_models.py
+# with some inspiration from https://github.com/lucidrains/x-transformers/blob/main/x_transformers/x_transformers.py
+# and https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/cait.py
 # Copyright (c) 2015-present, Facebook, Inc.
 # All rights reserved.
 from typing import Optional
@@ -9,8 +12,6 @@ from timm.models.vision_transformer import Mlp
 
 
 class Attention(nn.Module):
-    # taken from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/vision_transformer.py
-    # with slight modifications to do CA 
     def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, class_attention=False, talking_heads=True, attn_drop=0., proj_drop=0.):
         super().__init__()
         self.num_heads = num_heads
@@ -54,8 +55,6 @@ class Attention(nn.Module):
         return x_cls
 
 class LayerScale(nn.Module):
-    # taken from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/vision_transformer.py
-    # with slight modifications to add CA and LayerScale
     def __init__(self, dim, attentionBlock, mlp_ratio=4., drop=0., drop_path=0., init_values=1e-4):
         super().__init__()
         self.norm1 = nn.LayerNorm(dim)
@@ -78,8 +77,6 @@ class LayerScale(nn.Module):
         return x
     
 class CaiT(nn.Module):
-    # taken from https://github.com/facebookresearch/deit/blob/main/cait_models.py
-    # with slight modifications to adapt to our use case
     def __init__(self,
                  num_classes=4,
                  num_heads=8,
