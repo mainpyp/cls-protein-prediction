@@ -58,10 +58,14 @@ def train(cfg):
     logger = TensorBoardLogger(save_dir=cfg.logdir)
     callbacks = [
         ModelCheckpoint(
-            monitor=cfg.early_stopping_metric
+            monitor=cfg.early_stopping_metric,
+            mode="max"
         ),
         EarlyStopping(
-            monitor=cfg.early_stopping_metric
+            monitor=cfg.early_stopping_metric,
+            mode="max",
+            min_delta=0.01,
+            patience=5
         )
     ]
 
