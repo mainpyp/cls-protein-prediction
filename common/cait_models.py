@@ -177,6 +177,7 @@ class CaiT(nn.Module):
         # TODO: should we have pos embedding?
         # x = x + self.pos_embed
         # x = self.pos_drop(x)
+        x = x.mean(dim=1, keepdim=True)
 
         for i, blk in enumerate(self.blocks):
             x = blk(x)

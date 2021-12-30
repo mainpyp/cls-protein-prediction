@@ -97,7 +97,7 @@ def train(cfg, model_name):
 def main():
     cfg = load_cfg()
     train(cfg, model_name="MLP")
-    # train(cfg, model_name="CNN")
+    train(cfg, model_name="CNN")
     train(cfg, model_name="CaiT")
 
 if __name__ == '__main__':
