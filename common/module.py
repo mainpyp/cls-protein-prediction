@@ -29,11 +29,16 @@ class CaitModule(LightningModule):
         cm = ConfusionMatrix(actual_vector=labels, predict_vector=preds)
         # TODO: log cm image
         metrics = {
-            f"{mode}_acc": cm.ACC_Macro
+            f"{mode}_acc": cm.ACC_Macro,
+            f"{mode}_tpr_micro": cm.TPR_Micro,
+            f"{mode}_tpr_macro": cm.TPR_Macro,
+            f"{mode}_ppv_micro": cm.PPV_Micro,
+            f"{mode}_ppv_macro": cm.PPV_Macro
         }
 
         for key, value in metrics.items():
-            self.log(key, value)
+            if value != 'None':
+                self.log(key, value)
 
         return metrics
 
