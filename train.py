@@ -29,6 +29,7 @@ def load_cfg():
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TRAINING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     training_group = parser.add_argument_group(title='Training options')
+    training_group.add_argument("--gpus", type=int, default=-1)
     training_group.add_argument("--optimizer", type=str, default='Adam')
     training_group.add_argument("--learning_rate", type=float, default=1e-3)
     training_group.add_argument('--no-weighted_loss', dest='weighted_loss', action='store_false')
@@ -50,6 +51,7 @@ def load_cfg():
     model_group.add_argument("--input_dim", type=int, default=25)
     model_group.add_argument("--hidden_dims_list", type=str, default="20,10")
     model_group.add_argument("--dropout_p", type=float, default=0.3)
+    # TODO: add options for CNN, MLP, CaiT
 
     # pass 1: get all the parameters in the base config
     parser.set_defaults(on_cluster=False, weighted_loss=True, reload_data=False, balance_data=False)
@@ -84,20 +86,27 @@ def train(cfg):
     trainer = Trainer(
         logger=logger,
         callbacks=callbacks,
-        gpus=torch.cuda.device_count(),
+        gpus=cfg.gpus if torch.cuda.is_available() else 0,
         min_epochs=cfg.min_epochs,
         max_epochs=cfg.max_epochs
     )
 
-    print("start training...")
+    print(f"start fitting {cfg.model} to TMH dataset...")
     trainer.fit(module, dataset, ckpt_path=None if cfg.checkpoint == "" else cfg.checkpoint)
 
     print("start testing...")
     trainer.test(module, dataset)
 
 def main():
-    # TODO: do multiple runs to compare MLP vs CNN vs CaiT?
     cfg = load_cfg()
+
+    cfg.model == "MLP"
+    train(cfg)
+
+    cfg.model == "CNN"
+    train(cfg)
+
+    cfg.model == "CaiT"
     train(cfg)
 
 if __name__ == '__main__':
