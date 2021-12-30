@@ -15,7 +15,7 @@ class CaitModule(LightningModule):
         embed, label = batch
         expand_channel = embed.unsqueeze(1)
         y_hat = self.model(expand_channel)
-        loss = F.cross_entropy(y_hat, label.float()) # TODO: weight?
+        loss = F.cross_entropy(y_hat, label) # TODO: weight?
         self.log(f"{mode}_loss", loss)
         return {
             f"{mode}_loss": loss,
@@ -25,7 +25,7 @@ class CaitModule(LightningModule):
 
     def _generic_epoch_end(self, outputs, mode):
         preds = torch.sigmoid(torch.cat([d[f"{mode}_pred"] for d in outputs]).detach().cpu()).argmax(dim=1).int().numpy()
-        labels = torch.cat([d[f"{mode}_label"] for d in outputs]).detach().cpu().argmax(dim=1).int().numpy()
+        labels = torch.cat([d[f"{mode}_label"] for d in outputs]).detach().cpu().int().numpy()
         cm = ConfusionMatrix(actual_vector=labels, predict_vector=preds)
         # TODO: log cm image
         metrics = {

@@ -39,7 +39,9 @@ def load_cfg():
     dataloader_group.add_argument("--batch_size", type=int, default=2)
     dataloader_group.add_argument("--data_root", type=str, default=".")
     dataloader_group.add_argument("--num_classes", type=int, default=4)
-    dataloader_group.add_argument("--train_set_val_percentage", type=int, default=0.1)
+    dataloader_group.add_argument("--dataset_val_percentage", type=float, default=0.1)
+    dataloader_group.add_argument("--dataset_test_percentage", type=float, default=0.1)
+    dataloader_group.add_argument("--reload_data", action="store_true")
     dataloader_group.add_argument("--balance_data", action="store_true")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODEL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -50,7 +52,7 @@ def load_cfg():
     model_group.add_argument("--dropout_p", type=float, default=0.3)
 
     # pass 1: get all the parameters in the base config
-    parser.set_defaults(on_cluster=False, weighted_loss=True)
+    parser.set_defaults(on_cluster=False, weighted_loss=True, reload_data=False, balance_data=False)
     cfg, _ = parser.parse_known_args()
 
     return cfg
@@ -66,7 +68,6 @@ def train(cfg):
         )
     ]
 
-    print("loading dataset...")
     dataset = TMH(cfg=cfg)
     print(f"loading model {cfg.model}...")
     if cfg.model == "MLP":
