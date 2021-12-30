@@ -54,7 +54,7 @@ def load_cfg():
 
     return cfg
 
-def train(cfg):
+def train(cfg, model_name):
     logger = TensorBoardLogger(save_dir=cfg.logdir)
     callbacks = [
         ModelCheckpoint(
@@ -71,11 +71,11 @@ def train(cfg):
 
     dataset = TMH(cfg=cfg)
     print(f"loading model {cfg.model}...")
-    if cfg.model == "MLP":
+    if model_name == "MLP":
         model = MLP(cfg=cfg)
-    elif cfg.model == "CNN":
+    elif model_name == "CNN":
         model = CNN(cfg=cfg)
-    elif cfg.model == "CaiT":
+    elif model_name == "CaiT":
         model = CaiT(num_heads=1, depth=4)
     else:
         raise RuntimeError(f"Unsupported model {cfg.model}")
@@ -96,15 +96,9 @@ def train(cfg):
 
 def main():
     cfg = load_cfg()
-
-    cfg.model == "MLP"
-    train(cfg)
-
-    cfg.model == "CNN"
-    train(cfg)
-
-    cfg.model == "CaiT"
-    train(cfg)
+    train(cfg, model_name="MLP")
+    train(cfg, model_name="CNN")
+    train(cfg, model_name="CaiT")
 
 if __name__ == '__main__':
     main()
