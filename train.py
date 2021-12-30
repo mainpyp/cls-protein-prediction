@@ -75,7 +75,7 @@ def train(cfg):
     elif cfg.model == "CNN":
         model = CNN(cfg=cfg)
     elif cfg.model == "CaiT":
-        model = CaiT()
+        model = CaiT(num_heads=1, depth=4)
     else:
         raise RuntimeError(f"Unsupported model {cfg.model}")
     print("loading module...")

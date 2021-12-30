@@ -7,8 +7,10 @@ requests
 matplotlib
 h5py
 pandas
-scikit-learn
 configargparse
+hashlib
+pathlib
+tqdm
 
 # optional
 # ptpython
