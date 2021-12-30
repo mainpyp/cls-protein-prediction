@@ -70,7 +70,7 @@ def train(cfg, model_name):
     ]
 
     dataset = TMH(cfg=cfg)
-    print(f"loading model {cfg.model}...")
+    print(f"loading model {model_name}...")
     if model_name == "MLP":
         model = MLP(cfg=cfg)
     elif model_name == "CNN":
@@ -78,7 +78,7 @@ def train(cfg, model_name):
     elif model_name == "CaiT":
         model = CaiT(num_heads=1, depth=4)
     else:
-        raise RuntimeError(f"Unsupported model {cfg.model}")
+        raise RuntimeError(f"Unsupported model {model_name}")
     print("loading module...")
     module = CaitModule(cfg=cfg, model=model)
 
@@ -88,7 +88,7 @@ def train(cfg, model_name):
         gpus=cfg.gpus if torch.cuda.is_available() else 0
     )
 
-    print(f"start fitting {cfg.model} to TMH dataset...")
+    print(f"start fitting {model_name} to TMH dataset...")
     trainer.fit(module, dataset, ckpt_path=None if cfg.checkpoint == "" else cfg.checkpoint)
 
     print("start testing...")
