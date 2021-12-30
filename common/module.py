@@ -13,8 +13,7 @@ class CaitModule(LightningModule):
 
     def _generic_step(self, batch, mode):
         embed, label = batch
-        expand_channel = embed.unsqueeze(1)
-        y_hat = self.model(expand_channel)
+        y_hat = self.model(embed)
         loss = F.cross_entropy(y_hat, label) # TODO: weight?
         self.log(f"{mode}_loss", loss)
         return {
