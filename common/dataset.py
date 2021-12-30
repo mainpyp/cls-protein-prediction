@@ -11,19 +11,25 @@ from Bio.SeqRecord import SeqRecord
 from dnachisel.biotools import reverse_translate
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import Dataset, DataLoader, random_split
-from tqdm import tqdm
 
 
 class TMHLoader(Dataset):
-    def __init__(self, df):
+    def __init__(self, df, db):
         super().__init__()
         self.df = df
+        self.db = db
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, item):
-        return self.df.loc[item, "embedding"], self.df.loc[item, "class"]
+        hash = self.df.loc[item, "seq_hash"]
+        embedding = self.db.get(hash)
+        embedding = np.array(embedding).astype(np.float32)
+        if np.isnan(embedding).any():
+            embedding = np.zeros((1,1024)).astype(np.float32)
+        label = self.df.loc[item, "class"]
+        return embedding, label
 
 class TMH(LightningDataModule):
     def __init__(self, cfg):
@@ -46,11 +52,13 @@ class TMH(LightningDataModule):
             print("Processed dataset found, loading pickle.")
             df = pd.read_pickle(processed_df_path)
         else:
-            print("No processed dataset found, loading from scratch...")
+            print("No processed dataset found, loading from scratch")
             df = self._reload_data(data_root=root)
+            print("Done. Dumping to pickle to save time next run")
             df.to_pickle(processed_df_path)
 
-        dataloader = TMHLoader(df)
+        embeddings = h5py.File(root / "embeddings.h5")
+        dataloader = TMHLoader(df, embeddings)
         val_items = int(len(dataloader) * self.cfg.dataset_val_percentage)
         test_items = int(len(dataloader) * self.cfg.dataset_test_percentage)
         train_items = len(dataloader)-val_items-test_items
@@ -81,37 +89,32 @@ class TMH(LightningDataModule):
         file = open(path)
 
         def record_for(id: str, seq: str, anno: str) -> SeqRecord:
-            amino_seq = seq.strip().replace('X', '*')
-            base_seq = reverse_translate(amino_seq)
             # put back together to feed into SeqIO
             # alternative would be to manually construct SeqRecord here
-            record = SeqIO.read(StringIO(id + base_seq), "fasta")
-            record.annotations["tmh"] = anno.strip()
-            record.annotations["label"] = self.label_mappings[label]
-            assert record.translate().seq == amino_seq  # sanity check
+            record = SeqIO.read(StringIO(id + seq), "fasta")
+            record.letter_annotations["tmh"] = anno.strip()
+            record.annotations["label"] = self.label_mappings[label] # convert str label to int here
             return record
 
         return [record_for(id, seq, anno) for id, seq, anno in zip(file, file, file)]
 
-    def _as_dict(self, record: SeqRecord, embeddings_file) -> dict:
-        seq = str(record.translate().seq)
+    def _as_dict(self, record: SeqRecord) -> dict:
+        # we don't currently use the base sequence for training, but it's here for future use
+        seq = str(record.seq).strip().replace('X', '*') # dnachisel doesn't like X as stop codons
+        base_seq = reverse_translate(seq)
         hash = hashlib.md5(seq.encode("UTF-8")).hexdigest()
-        embedding = embeddings_file.get(hash)
-        mean_embedding = np.mean(embedding, axis=0) if embedding is not None else np.zeros(1024)
         return {
             "protein": record.name,
-            "base_seq": str(record.seq),
+            "base_seq": base_seq,
             "seq": seq,
-            "seq_anno": record.annotations["tmh"],
+            "seq_anno": record.letter_annotations["tmh"],
             "seq_hash": hash,
-            "embedding": mean_embedding.astype(np.float32),
             "class": record.annotations["label"]
         }
 
     def _reload_data(self, data_root: Path):
-        embeddings = h5py.File(data_root / "embeddings.h5")
         labels = list(self.label_mappings.keys())
-        all_dicts = [self._as_dict(record, embeddings)
-                     for label in tqdm(labels)
-                     for record in tqdm(self._parse_3line(data_root / f"labels/{label}.3line", label=label))]
+        all_dicts = [self._as_dict(record)
+                     for label in labels
+                     for record in self._parse_3line(data_root / f"labels/{label}.3line", label=label)]
         return pd.DataFrame(all_dicts)

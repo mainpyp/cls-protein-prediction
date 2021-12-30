@@ -10,7 +10,6 @@ h5py
 pandas
 configargparse
 pathlib
-tqdm
 pycm
 
 # optional
