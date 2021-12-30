@@ -23,7 +23,7 @@ class MLP(nn.Module):
 class CNN(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.conv1 = nn.Conv1d(1, 6, kernel_size=3, padding=1, stride=1)
+        self.conv1 = nn.Conv1d(1024, 6, kernel_size=3, padding=1, stride=1)
         self.pool = nn.MaxPool1d(2)
 
         self.conv2 = nn.Conv1d(6, 16, kernel_size=3, padding=1, stride=1)
@@ -36,6 +36,7 @@ class CNN(nn.Module):
         x = self.pool(x)
         x = F.relu( self.conv2(x) )
         x = self.pool(x)
+        # TODO: what to do with varying channels here? Mean?
         x = self.flatten(x)
         x = F.relu(self.fc1(x))
         x = self.fc_fin(x)

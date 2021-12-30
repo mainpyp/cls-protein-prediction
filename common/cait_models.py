@@ -49,7 +49,7 @@ class Attention(nn.Module):
             attn = self.proj_w(attn.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
         attn = self.attn_drop(attn)
 
-        x_cls = (attn @ v).transpose(1, 2).reshape(B, 1, C)
+        x_cls = (attn @ v).transpose(1, 2).reshape(B, 1 if self.class_attention else N, C)
         x_cls = self.proj(x_cls)
         x_cls = self.proj_drop(x_cls)
         return x_cls
