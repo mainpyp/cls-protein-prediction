@@ -135,3 +135,6 @@ logs
 **/.DS_Store
 *.xml
 *.iml
+.idea/misc.xml
+.idea/cls-protein-prediction.iml
+.idea/misc.xml
