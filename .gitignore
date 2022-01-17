@@ -138,3 +138,4 @@ logs
 .idea/misc.xml
 .idea/cls-protein-prediction.iml
 .idea/misc.xml
+*.fasta
