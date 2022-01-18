@@ -48,6 +48,18 @@ def load_cfg():
     model_group.add_argument("--dropout_p", type=float, default=0.3)
     # TODO: add options for CNN, MLP, CaiT
 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PREDICTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    parser.add_argument("--fasta", type=str, help="path_to_fasta")
+    parser.add_argument("--emb", type=str, help="path_to_embeddings")
+    parser.add_argument("--output", type=str, help="path_to_output", default="./output.tsv")
+    parser.add_argument(
+        "--model_type",
+        type=str,
+        default="CAIT",
+        choices=["CNN", "MLP", "CAIT"],
+        help="Model type. Default CAIT",
+    )
+
     # pass 1: get all the parameters in the base config
     parser.set_defaults(on_cluster=False, weighted_loss=True, reload_data=False, balance_data=False)
     cfg, _ = parser.parse_known_args()
