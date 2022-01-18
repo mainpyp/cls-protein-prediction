@@ -10,21 +10,12 @@ import torch.nn as nn
 import torch
 from common.models import *
 from common.cait_models import CaiT
+from common.module import CaitModule
 
 
 ################# ArgumentParser #################
-parser = argparse.ArgumentParser(description="Class Attention Model")
-parser.add_argument("--fasta", type=str, help="path_to_fasta")
-parser.add_argument("--emb", type=str, help="path_to_embeddings")
-parser.add_argument("--output", type=str, help="path_to_output", default="./output.tsv")
-parser.add_argument(
-    "--model_type",
-    type=str,
-    default="CAIT",
-    choices=["CNN", "MLP", "CAIT"],
-    help="Model type. Default CAIT",
-)
-args = parser.parse_args()
+from train import load_cfg
+cfg = load_cfg()
 
 
 ################# Mappings for labels #################
@@ -76,25 +67,27 @@ def read_data(path_fasta: str, path_h5: str) -> List[dict]:
 
 
 ################# Load Model #################
-def load_model(model_type="CAIT") -> list:
+def load_model(model_type="CAIT") -> CaitModule:
     if model_type == "CAIT":
-        model = CaiT()
+        model = CaiT(cfg)
     elif model_type == "MLP":
-        model = MLP()
+        model = MLP(cfg)
     elif model_type == "CNN":
-        model = CNN()
-
-    model.load_state_dict(torch.load(f"models/{model_type}.pt"))
-    model.eval()
-    return model
+        model = CNN(cfg)
+    module = CaitModule(cfg, model)
+    ckpt = torch.load(f"models/{model_type}.ckpt")
+    module.load_state_dict(ckpt["state_dict"])
+    module = module.eval()
+    return module
 
 
 ################# Predict Data #################
-def predict(data: List[dict], model: nn.Module) -> dict:
+def predict(data: List[dict], module: nn.Module) -> dict:
     with torch.no_grad():
         result_predicted = dict()
         for each_dict in data:
-            prediction_output = model(data["embedding"])
+            emb_as_tensor = torch.Tensor(each_dict["embedding"]).T
+            prediction_output = module.forward(emb_as_tensor)
             confidence = torch.max(prediction_output)
             predicted = torch.argmax(prediction_output)
             assert predicted in range(3), "Something went wrong with the prediction"
@@ -111,7 +104,7 @@ def parse_output(results: dict, output_path: str) -> None:
 
 
 if __name__ == "__main__":
-    prediction_data = read_data(path_fasta=args.fasta, path_h5=args.emb)
-    model = load_model(args.model_type)
+    prediction_data = read_data(path_fasta=cfg.fasta, path_h5=cfg.emb)
+    model = load_model(cfg.model_type)
     output = predict(prediction_data, model)
-    parse_output(output, output_path=args.output)
+    parse_output(output, output_path=cfg.output)
