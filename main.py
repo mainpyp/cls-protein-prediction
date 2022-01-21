@@ -8,6 +8,7 @@ import h5py
 import numpy as np
 import torch.nn as nn
 import torch
+import torch.nn.functional as F
 from common.models import *
 from common.cait_models import CaiT
 from common.module import CaitModule
@@ -86,11 +87,12 @@ def predict(data: List[dict], module: nn.Module) -> dict:
     with torch.no_grad():
         result_predicted = dict()
         for each_dict in data:
-            emb_as_tensor = torch.Tensor(each_dict["embedding"]).T
-            prediction_output = module.forward(emb_as_tensor)
-            confidence = torch.max(prediction_output)
-            predicted = torch.argmax(prediction_output)
-            assert predicted in range(3), "Something went wrong with the prediction"
+            emb_as_tensor = torch.Tensor(each_dict["embedding"]).unsqueeze(dim=0)
+            prediction_output = module.model.forward(emb_as_tensor)
+            probability_output = F.softmax(prediction_output)
+            confidence = torch.max(probability_output)
+            predicted = torch.argmax(probability_output)
+            assert predicted in range(4), "Something went wrong with the prediction"
             string_label = reverse_label_mappings[int(predicted)]
             result_predicted[each_dict["protein"]] = [string_label, confidence]
     return result_predicted
@@ -100,7 +102,7 @@ def predict(data: List[dict], module: nn.Module) -> dict:
 def parse_output(results: dict, output_path: str) -> None:
     with open(output_path, "w") as file:
         for protein, prediction in results.items():
-            file.write(f"{protein}\t{prediction[0]}\t{prediction[1]}\n")
+            file.write(f"{protein}\t{prediction[0]}\t{prediction[1]:.2f}\n")
 
 
 if __name__ == "__main__":
