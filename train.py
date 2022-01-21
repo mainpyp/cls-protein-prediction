@@ -1,8 +1,9 @@
 import configargparse
 import torch
+import wandb
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 
 from common.cait_models import CaiT
 from common.dataset import TMH
@@ -67,7 +68,17 @@ def load_cfg():
     return cfg
 
 def train(cfg, model_name):
-    logger = TensorBoardLogger(save_dir=cfg.logdir)
+    run = wandb.init(reinit=True, project=f"pp2-{model_name}")
+    wandb.config.update(cfg)
+
+    tblogger = TensorBoardLogger(save_dir=cfg.logdir)
+    print(f"Logdir: {tblogger.log_dir}")
+
+    loggers = [tblogger]
+
+    if cfg.on_cluster:
+        loggers.append(WandbLogger(save_dir=cfg.logdir))
+
     callbacks = [
         ModelCheckpoint(
             monitor=cfg.early_stopping_metric,
@@ -95,7 +106,7 @@ def train(cfg, model_name):
     module = CaitModule(cfg=cfg, model=model)
 
     trainer = Trainer(
-        logger=logger,
+        logger=loggers,
         callbacks=callbacks,
         gpus=cfg.gpus if torch.cuda.is_available() else 0
     )
@@ -105,6 +116,8 @@ def train(cfg, model_name):
 
     print("start testing...")
     trainer.test(module, dataset)
+
+    run.finish()
 
 def main():
     cfg = load_cfg()
