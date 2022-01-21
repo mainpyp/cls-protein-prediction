@@ -20,3 +20,6 @@ wandb
 # ipykernel
 # plotly
 # ipdb
+
+# polyaxon-cli==0.6.1
+# test_tube # Polyaxon experiments
