@@ -1,10 +1,10 @@
 import configargparse
 import torch
-import wandb
 from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, TQDMProgressBar
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 
+import wandb
 from common.cait_models import CaiT
 from common.dataset import TMH
 from common.models import CNN, MLP
@@ -89,6 +89,9 @@ def train(cfg, model_name):
             mode="max",
             min_delta=0.01,
             patience=5
+        ),
+        TQDMProgressBar(
+            refresh_rate=50
         )
     ]
 
