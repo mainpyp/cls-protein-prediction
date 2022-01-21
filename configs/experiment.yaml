@@ -27,12 +27,16 @@ environment:
 #    gpuMemory: '12'
 
 declarations:
+  data_root: /data/CholecT50-challenge-train/pp2/tmh
+  batch_size: 1
   gpus: 1
 
 run:
   cmd: LOCAL_RANK=0 \
     CUDA_LAUNCH_BLOCKING=1 \
     WANDB_API_KEY=68baf49e41abf45f853f0296d1586f191ffd70ba \
-    python main.py \
-    -c configs/tune_cluster.yaml \
-    --gpus {{ gpus }}
+    python train.py \
+    --data_root {{ data_root }} \
+    --batch_size {{ batch_size }} \
+    --gpus {{ gpus }} \
+    --on_cluster
