@@ -12,6 +12,7 @@ configargparse
 pathlib
 pycm
 argparse
+wandb
 
 
 # optional
