@@ -61,5 +61,8 @@ class CaitModule(LightningModule):
     def test_epoch_end(self, outputs):
         return self._generic_epoch_end(outputs, "test")
 
+    def on_save_checkpoint(self, checkpoint):
+        print(f"Saving checkpoint at the end of epoch {self.current_epoch}")
+
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=1e-3) # TODO: move to cfg
