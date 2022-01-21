@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import configargparse
 import torch
 from pytorch_lightning import Trainer
@@ -81,16 +83,22 @@ def train(cfg, model_name):
     run = wandb.init(reinit=True, project=f"pp2-{model_name}")
     wandb.config.update(cfg)
 
-    tblogger = TensorBoardLogger(save_dir=cfg.logdir)
-    print(f"Logdir: {tblogger.log_dir}")
-
-    loggers = [tblogger]
-
+    loggers = []
     if cfg.on_cluster:
+        from common.plx_logger import PolyaxonLogger
         loggers.append(WandbLogger(save_dir=cfg.logdir))
+        poly_logger = PolyaxonLogger(cfg)
+        loggers.append(poly_logger)
+        cfg.logdir = str(poly_logger.output_path / poly_logger.name / f'version_{poly_logger.version}')
+    loggers.append(TensorBoardLogger(save_dir=cfg.logdir))
+    print(f"Logdir: {cfg.logdir}")
+
+    ckpt_dir = Path(cfg.logdir) / "checkpoints"
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     callbacks = [
         ModelCheckpoint(
+            dirpath=str(ckpt_dir),
             monitor=cfg.early_stopping_metric,
             mode="max"
         ),
