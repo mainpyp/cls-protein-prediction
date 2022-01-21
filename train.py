@@ -47,6 +47,16 @@ def load_cfg():
     model_group.add_argument("--input_dim", type=int, default=25)
     model_group.add_argument("--hidden_dims_list", type=str, default="20,10")
     model_group.add_argument("--dropout_p", type=float, default=0.3)
+    model_group.add_argument("--embed_dim", type=int, default=1024)
+    model_group.add_argument("--num_heads", type=int, default=8)
+    model_group.add_argument("--depth", type=int, default=24)
+    model_group.add_argument("--depth_token_only", type=int, default=2)
+    model_group.add_argument("--mlp_ratio", type=float, default=4.)
+    model_group.add_argument("--mlp_ratio_token_only", type=float, default=4.0)
+    model_group.add_argument("--drop_rate", type=float, default=0.)
+    model_group.add_argument("--attn_drop_rate", type=float, default=0.)
+    model_group.add_argument("--drop_path_rate", type=float, default=0.)
+    model_group.add_argument("--init_scale", type=float, default=1e-5)
     # TODO: add options for CNN, MLP, CaiT
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PREDICTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -101,8 +111,8 @@ def train(cfg, model_name):
         model = MLP(cfg=cfg)
     elif model_name == "CNN":
         model = CNN(cfg=cfg)
-    elif model_name == "CaiT":
-        model = CaiT(num_heads=1, depth=4)
+    elif "CaiT" in model_name:
+        model = CaiT(cfg=cfg)
     else:
         raise RuntimeError(f"Unsupported model {model_name}")
     print("loading module...")
@@ -124,9 +134,21 @@ def train(cfg, model_name):
 
 def main():
     cfg = load_cfg()
-    train(cfg, model_name="MLP")
-    train(cfg, model_name="CNN")
-    train(cfg, model_name="CaiT")
+    # train(cfg, model_name="MLP")
+    # train(cfg, model_name="CNN")
+    # train(cfg, model_name="CaiT-L")
+    cfg.num_heads=4
+    cfg.depth=24
+    cfg.depth_token_only=2
+    train(cfg, model_name="CaiT-M")
+    cfg.num_heads = 4
+    cfg.depth = 12
+    cfg.depth_token_only = 2
+    train(cfg, model_name="CaiT-S")
+    cfg.num_heads = 2
+    cfg.depth = 4
+    cfg.depth_token_only = 1
+    train(cfg, model_name="CaiT-XS")
 
 if __name__ == '__main__':
     main()
