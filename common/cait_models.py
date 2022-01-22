@@ -52,7 +52,7 @@ class Attention(nn.Module):
         x_cls = (attn @ v).transpose(1, 2).reshape(B, 1 if self.class_attention else N, C)
         x_cls = self.proj(x_cls)
         x_cls = self.proj_drop(x_cls)
-        return x_cls
+        return x_cls, attn
 
 class LayerScale(nn.Module):
     def __init__(self, dim, attentionBlock, mlp_ratio=4., drop=0., drop_path=0., init_values=1e-4):
@@ -69,12 +69,14 @@ class LayerScale(nn.Module):
     def forward(self, x, x_cls: Optional[torch.Tensor] = None):
         if x_cls is not None:
             u = torch.cat((x_cls, x), dim=1)
-            x_cls = x_cls + self.drop_path(self.gamma_1 * self.attn(self.norm1(u)))
+            x_cls, attn = self.attn(self.norm1(u))
+            x_cls = x_cls + self.drop_path(self.gamma_1 * x_cls)
             x = x_cls + self.drop_path(self.gamma_2 * self.mlp(self.norm2(x_cls)))
         else:
-            x = x + self.drop_path(self.gamma_1 * self.attn(self.norm1(x)))
+            x_cls, attn = self.attn(self.norm1(x))
+            x = x + self.drop_path(self.gamma_1 * x_cls)
             x = x + self.drop_path(self.gamma_2 * self.mlp(self.norm2(x)))
-        return x
+        return x, attn
     
 class CaiT(nn.Module):
     def __init__(self, cfg,
@@ -145,6 +147,7 @@ class CaiT(nn.Module):
         B, N, C = x.shape
 
         cls_tokens = self.cls_token.expand(B, -1, -1)
+        attn_weights = []
 
         # TODO: should we have pos embedding?
         # x = x + self.pos_embed
@@ -154,14 +157,16 @@ class CaiT(nn.Module):
         x = x.mean(dim=1, keepdim=True)
 
         for i, blk in enumerate(self.blocks):
-            x = blk(x)
+            x, attn = blk(x)
+            attn_weights.append(attn)
 
         for i, blk in enumerate(self.blocks_token_only):
-            cls_tokens = blk(x, cls_tokens)
+            cls_tokens, attn = blk(x, cls_tokens)
+            attn_weights.append(attn)
 
         x = torch.cat((cls_tokens, x), dim=1)
 
         x = self.norm(x)
         x = x[:, 0] # we discard all outputs except the cls token one
         x = self.head(x)
-        return x
+        return x, attn_weights
