@@ -152,11 +152,12 @@ def train(cfg, model_name):
 
 def main():
     cfg = load_cfg()
-    train(cfg, model_name="MLP")
-    train(cfg, model_name="CNN")
+    # train(cfg, model_name="MLP")
+    # train(cfg, model_name="CNN")
 
     # can't currently train transformers with minibatches
     cfg.batch_size = 1
+    cfg.mean_embedding = False
 
     cfg.num_heads = 2
     cfg.depth = 8
