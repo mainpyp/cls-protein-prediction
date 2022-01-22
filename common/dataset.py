@@ -32,7 +32,7 @@ class TMHLoader(Dataset):
             embedding = np.zeros((1,1024)).astype(np.float32)
         label = self.df.loc[item, "class"]
         if self.mean_embedding:
-            embedding = embedding.mean(axis=0)
+            embedding = embedding.mean(axis=0, keepdims=True)
         return embedding, label
 
 class TMH(LightningDataModule):
