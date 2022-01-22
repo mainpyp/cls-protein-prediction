@@ -29,7 +29,8 @@ environment:
 declarations:
   data_root: /data/CholecT50-challenge-train/pp2/tmh
   gpus: 1
-  lr: 1e-3
+  lr: 1e-4
+  embed_dim: 256
 
 run:
   cmd: LOCAL_RANK=0 \
@@ -39,5 +40,6 @@ run:
     --data_root {{ data_root }} \
     --gpus {{ gpus }} \
     --learning_rate {{ lr }} \
+    --embed_dim {{ embed_dim }} \
     --on_cluster \
     --on_polyaxon
