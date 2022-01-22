@@ -139,7 +139,9 @@ def train(cfg, model_name):
     trainer = Trainer(
         logger=loggers,
         callbacks=callbacks,
-        gpus=cfg.gpus if torch.cuda.is_available() else 0
+        gpus=cfg.gpus if torch.cuda.is_available() else 0,
+        precision=16,
+        amp_backend="native"
     )
 
     print(f"start fitting {model_name} to TMH dataset...")
