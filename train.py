@@ -61,6 +61,7 @@ def load_cfg():
     model_group.add_argument("--attn_drop_rate", type=float, default=0.)
     model_group.add_argument("--drop_path_rate", type=float, default=0.)
     model_group.add_argument("--init_scale", type=float, default=1e-5)
+    model_group.add_argument("--no-qkv_bias", dest="qkv_bias", action="store_false")
     # TODO: add options for CNN, MLP, CaiT
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PREDICTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -82,7 +83,8 @@ def load_cfg():
         weighted_loss=True,
         reload_data=False,
         balance_data=False,
-        mean_embedding=True
+        mean_embedding=True,
+        qkv_bias=True
     )
     cfg, _ = parser.parse_known_args()
 
@@ -152,33 +154,32 @@ def train(cfg, model_name):
 
 def main():
     cfg = load_cfg()
-    # train(cfg, model_name="MLP")
-    # train(cfg, model_name="CNN")
-    torch.cuda.empty_cache()
+    train(cfg, model_name="MLP")
+    train(cfg, model_name="CNN")
 
     # can't currently train transformers with minibatches
     cfg.batch_size = 1
     cfg.mean_embedding = False
 
-    cfg.num_heads = 2
-    cfg.depth = 8
+    cfg.num_heads = 1
+    cfg.depth = 4
     cfg.depth_token_only = 1
     train(cfg, model_name="CaiT-XS")
-    #
-    # cfg.num_heads = 4
-    # cfg.depth = 12
-    # cfg.depth_token_only = 2
-    # train(cfg, model_name="CaiT-S")
-    #
-    # cfg.num_heads=4
-    # cfg.depth=24
-    # cfg.depth_token_only=2
-    # train(cfg, model_name="CaiT-M")
-    #
-    # cfg.num_heads = 8
-    # cfg.depth = 24
-    # cfg.depth_token_only = 2
-    # train(cfg, model_name="CaiT-L")
+
+    cfg.num_heads = 2
+    cfg.depth = 12
+    cfg.depth_token_only = 1
+    train(cfg, model_name="CaiT-S")
+
+    cfg.num_heads=4
+    cfg.depth=24
+    cfg.depth_token_only=2
+    train(cfg, model_name="CaiT-M")
+
+    cfg.num_heads = 8
+    cfg.depth = 24
+    cfg.depth_token_only = 2
+    train(cfg, model_name="CaiT-L")
 
 if __name__ == '__main__':
     main()
