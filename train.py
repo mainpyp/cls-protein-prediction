@@ -89,9 +89,6 @@ def load_cfg():
     return cfg
 
 def train(cfg, model_name):
-    run = wandb.init(reinit=True, project=f"pp2-{model_name}")
-    wandb.config.update(cfg)
-
     loggers = []
     if cfg.on_polyaxon:
         from common.plx_logger import PolyaxonLogger
@@ -99,6 +96,8 @@ def train(cfg, model_name):
         loggers.append(poly_logger)
         cfg.logdir = str(poly_logger.output_path / poly_logger.name / f'version_{poly_logger.version}')
     if cfg.on_cluster:
+        run = wandb.init(reinit=True, project=f"pp2-{model_name}")
+        wandb.config.update(cfg)
         loggers.append(WandbLogger(save_dir=cfg.logdir))
     loggers.append(TensorBoardLogger(save_dir=cfg.logdir))
     print(f"Logdir: {cfg.logdir}")
@@ -140,8 +139,6 @@ def train(cfg, model_name):
         logger=loggers,
         callbacks=callbacks,
         gpus=cfg.gpus if torch.cuda.is_available() else 0,
-        precision=16,
-        amp_backend="native"
     )
 
     print(f"start fitting {model_name} to TMH dataset...")
@@ -150,12 +147,14 @@ def train(cfg, model_name):
     print("start testing...")
     trainer.test(module, dataset)
 
-    run.finish()
+    if cfg.on_cluster:
+        run.finish()
 
 def main():
     cfg = load_cfg()
     # train(cfg, model_name="MLP")
     # train(cfg, model_name="CNN")
+    torch.cuda.empty_cache()
 
     # can't currently train transformers with minibatches
     cfg.batch_size = 1
@@ -165,21 +164,21 @@ def main():
     cfg.depth = 8
     cfg.depth_token_only = 1
     train(cfg, model_name="CaiT-XS")
-
-    cfg.num_heads = 4
-    cfg.depth = 12
-    cfg.depth_token_only = 2
-    train(cfg, model_name="CaiT-S")
-
-    cfg.num_heads=4
-    cfg.depth=24
-    cfg.depth_token_only=2
-    train(cfg, model_name="CaiT-M")
-
-    cfg.num_heads = 8
-    cfg.depth = 24
-    cfg.depth_token_only = 2
-    train(cfg, model_name="CaiT-L")
+    #
+    # cfg.num_heads = 4
+    # cfg.depth = 12
+    # cfg.depth_token_only = 2
+    # train(cfg, model_name="CaiT-S")
+    #
+    # cfg.num_heads=4
+    # cfg.depth=24
+    # cfg.depth_token_only=2
+    # train(cfg, model_name="CaiT-M")
+    #
+    # cfg.num_heads = 8
+    # cfg.depth = 24
+    # cfg.depth_token_only = 2
+    # train(cfg, model_name="CaiT-L")
 
 if __name__ == '__main__':
     main()

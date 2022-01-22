@@ -171,6 +171,10 @@ class CaiT(nn.Module):
     def forward(self, x):
         B, N, C = x.shape
 
+        # due to GPU constraints we can't load infinitely long sequences into memory
+        if N > 4000:
+            x = x[:,:4000,:]
+
         cls_tokens = self.cls_token.expand(B, -1, -1)
         attn_weights = []
 
