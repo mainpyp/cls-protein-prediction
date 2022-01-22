@@ -132,6 +132,8 @@ class CaiT(nn.Module):
         self.cfg = cfg
         self.cls_token = nn.Parameter(torch.zeros(1, 1, cfg.embed_dim))
 
+        self.reducer = nn.Identity() if cfg.embed_dim == 1024 else nn.Linear(1024, cfg.embed_dim)
+
         dpr = [cfg.drop_path_rate for i in range(cfg.depth)]
         self.blocks = nn.ModuleList([
             LayerScaleEmbeddingOnly(cfg=cfg, dpr=dpr[i])
@@ -164,6 +166,8 @@ class CaiT(nn.Module):
 
     def forward(self, x):
         B, N, C = x.shape
+
+        x = self.reducer(x) # no ReLU here on purpose
 
         # due to GPU constraints we can't load infinitely long sequences into memory
         if N > self.cfg.clip_sequence:
