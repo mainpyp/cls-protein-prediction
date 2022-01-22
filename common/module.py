@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import torch
 import torch.nn.functional as F
 from pycm import ConfusionMatrix
@@ -57,7 +59,7 @@ class CaitModule(LightningModule):
         }
 
     def _generic_epoch_end(self, outputs, mode):
-        preds = torch.sigmoid(torch.cat([d[f"{mode}_pred"].argmax(dim=1) for d in outputs]).detach().cpu()).int().numpy()
+        preds = torch.cat([d[f"{mode}_pred"].argmax(dim=1) for d in outputs]).detach().cpu().int().numpy()
         labels = torch.cat([d[f"{mode}_label"] for d in outputs]).detach().cpu().int().numpy()
         cm = ConfusionMatrix(actual_vector=labels, predict_vector=preds)
         # TODO: log cm image
@@ -93,6 +95,7 @@ class CaitModule(LightningModule):
         return self._generic_step(batch, "test")
 
     def test_epoch_end(self, outputs):
+        torch.save(outputs, Path(self.cfg.logdir) / "test_outputs.pkl")
         return self._generic_epoch_end(outputs, "test")
 
     def on_save_checkpoint(self, checkpoint):
