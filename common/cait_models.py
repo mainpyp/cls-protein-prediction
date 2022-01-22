@@ -178,9 +178,6 @@ class CaiT(nn.Module):
         # x = x + self.pos_embed
         # x = self.pos_drop(x)
 
-        # reduce word length to 1
-        x = x.mean(dim=1, keepdim=True)
-
         for i, blk in enumerate(self.blocks):
             x, attn = blk(x)
             attn_weights.append(attn)
