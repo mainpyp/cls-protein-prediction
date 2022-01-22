@@ -42,6 +42,7 @@ def load_cfg():
     dataloader_group.add_argument("--dataset_test_percentage", type=float, default=0.1)
     dataloader_group.add_argument("--reload_data", action="store_true")
     dataloader_group.add_argument("--balance_data", action="store_true")
+    dataloader_group.add_argument("--mean_embedding", action="store_true")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODEL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     model_group = parser.add_argument_group(title='Model options')
@@ -144,6 +145,7 @@ def main():
     cfg = load_cfg()
     train(cfg, model_name="MLP")
     train(cfg, model_name="CNN")
+    cfg.batch_size = 1
     # train(cfg, model_name="CaiT-L")
     # cfg.num_heads=4
     # cfg.depth=24
