@@ -28,7 +28,7 @@ def load_cfg():
     training_group.add_argument("--gpus", type=int, default=-1)
     training_group.add_argument("--early_stopping_metric", type=str, default="val_acc")
     training_group.add_argument("--optimizer", type=str, default='Adam')
-    training_group.add_argument("--learning_rate", type=float, default=1e-3)
+    training_group.add_argument("--learning_rate", type=float, default=1e-5)
     training_group.add_argument("--checkpoint", type=str, default="")
     training_group.add_argument('--no-weighted_loss', dest='weighted_loss', action='store_false')
 
@@ -142,19 +142,19 @@ def train(cfg, model_name):
 
 def main():
     cfg = load_cfg()
-    # train(cfg, model_name="MLP")
-    # train(cfg, model_name="CNN")
+    train(cfg, model_name="MLP")
+    train(cfg, model_name="CNN")
     # train(cfg, model_name="CaiT-L")
-    cfg.num_heads=4
-    cfg.depth=24
-    cfg.depth_token_only=2
-    train(cfg, model_name="CaiT-M")
-    cfg.num_heads = 4
-    cfg.depth = 12
-    cfg.depth_token_only = 2
-    train(cfg, model_name="CaiT-S")
+    # cfg.num_heads=4
+    # cfg.depth=24
+    # cfg.depth_token_only=2
+    # train(cfg, model_name="CaiT-M")
+    # cfg.num_heads = 4
+    # cfg.depth = 12
+    # cfg.depth_token_only = 2
+    # train(cfg, model_name="CaiT-S")
     cfg.num_heads = 2
-    cfg.depth = 4
+    cfg.depth = 8
     cfg.depth_token_only = 1
     train(cfg, model_name="CaiT-XS")
 
