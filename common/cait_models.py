@@ -58,7 +58,6 @@ class LayerScale(nn.Module):
                  dim,
                  num_heads,
                  qkv_bias,
-                 qk_scale,
                  class_attention,
                  attn_drop,
                  mlp_ratio=4.,
@@ -71,7 +70,6 @@ class LayerScale(nn.Module):
             dim=dim,
             num_heads=num_heads,
             qkv_bias=qkv_bias,
-            qk_scale=qk_scale,
             class_attention=class_attention,
             talking_heads=not class_attention,
             attn_drop=attn_drop,
@@ -91,12 +89,11 @@ class LayerScale(nn.Module):
         return x, attn
 
 class LayerScaleEmbeddingOnly(LayerScale):
-    def __init__(self, cfg, dpr, qkv_bias=True, qk_scale=None):
+    def __init__(self, cfg, dpr):
         super().__init__(
             dim=cfg.embed_dim,
             num_heads=cfg.num_heads,
-            qkv_bias=qkv_bias,
-            qk_scale=qk_scale,
+            qkv_bias=cfg.qkv_bias,
             class_attention=False,
             attn_drop=cfg.attn_drop_rate,
             mlp_ratio=cfg.mlp_ratio,
@@ -107,12 +104,11 @@ class LayerScaleEmbeddingOnly(LayerScale):
 
 
 class LayerScaleClsToken(LayerScale):
-    def __init__(self, cfg, qkv_bias=True, qk_scale=None):
+    def __init__(self, cfg):
         super().__init__(
             dim=cfg.embed_dim,
             num_heads=cfg.num_heads,
-            qkv_bias=qkv_bias,
-            qk_scale=qk_scale,
+            qkv_bias=cfg.qkv_bias,
             class_attention=True,
             attn_drop=0.0,
             mlp_ratio=cfg.mlp_ratio_token_only,
@@ -130,9 +126,7 @@ class LayerScaleClsToken(LayerScale):
 
 
 class CaiT(nn.Module):
-    def __init__(self, cfg,
-                 qkv_bias=True,
-                 qk_scale=None):
+    def __init__(self, cfg):
         super().__init__()
 
         self.cfg = cfg
@@ -140,12 +134,12 @@ class CaiT(nn.Module):
 
         dpr = [cfg.drop_path_rate for i in range(cfg.depth)]
         self.blocks = nn.ModuleList([
-            LayerScaleEmbeddingOnly(cfg=cfg, dpr=dpr[i], qkv_bias=qkv_bias, qk_scale=qk_scale)
+            LayerScaleEmbeddingOnly(cfg=cfg, dpr=dpr[i])
             for i in range(cfg.depth)
         ])
 
         self.blocks_token_only = nn.ModuleList([
-            LayerScaleClsToken(cfg=cfg, qkv_bias=qkv_bias, qk_scale=qk_scale)
+            LayerScaleClsToken(cfg=cfg)
             for i in range(cfg.depth_token_only)
         ])
             
@@ -172,8 +166,8 @@ class CaiT(nn.Module):
         B, N, C = x.shape
 
         # due to GPU constraints we can't load infinitely long sequences into memory
-        if N > 4000:
-            x = x[:,:4000,:]
+        if N > 3500:
+            x = x[:,:3500,:]
 
         cls_tokens = self.cls_token.expand(B, -1, -1)
         attn_weights = []
