@@ -29,7 +29,7 @@ environment:
 declarations:
   data_root: /data/CholecT50-challenge-train/pp2/tmh
   gpus: 1
-  lr: 1e-4
+  lr: 1e-6
   embed_dim: 256
 
 run:
