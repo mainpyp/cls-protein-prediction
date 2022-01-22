@@ -44,6 +44,7 @@ def load_cfg():
     dataloader_group.add_argument("--reload_data", action="store_true")
     dataloader_group.add_argument("--balance_data", action="store_true")
     dataloader_group.add_argument("--no-mean_embedding", dest="mean_embedding", action="store_false")
+    dataloader_group.add_argument("--clip_sequence", type=int, default=3500)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODEL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     model_group = parser.add_argument_group(title='Model options')
@@ -174,11 +175,13 @@ def main():
     cfg.num_heads=4
     cfg.depth=24
     cfg.depth_token_only=2
+    cfg.clip_sequence = 3000
     train(cfg, model_name="CaiT-M")
 
     cfg.num_heads = 8
     cfg.depth = 24
     cfg.depth_token_only = 2
+    cfg.clip_sequence = 2000
     train(cfg, model_name="CaiT-L")
 
 if __name__ == '__main__':

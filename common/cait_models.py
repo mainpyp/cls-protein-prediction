@@ -166,8 +166,8 @@ class CaiT(nn.Module):
         B, N, C = x.shape
 
         # due to GPU constraints we can't load infinitely long sequences into memory
-        if N > 3500:
-            x = x[:,:3500,:]
+        if N > self.cfg.clip_sequence:
+            x = x[:,:self.cfg.clip_sequence,:]
 
         cls_tokens = self.cls_token.expand(B, -1, -1)
         attn_weights = []
