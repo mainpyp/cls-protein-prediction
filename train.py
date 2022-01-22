@@ -21,6 +21,7 @@ def load_cfg():
     mode_group = parser.add_argument_group(title='Mode options')
     mode_group.add_argument("--mode", type=str, default='TRAIN')
     mode_group.add_argument("--on_cluster", action="store_true")
+    mode_group.add_argument("--on_polyaxon", action="store_true")
     mode_group.add_argument("--logdir", type=str, default="logs")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TRAINING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -75,7 +76,14 @@ def load_cfg():
     )
 
     # pass 1: get all the parameters in the base config
-    parser.set_defaults(on_cluster=False, weighted_loss=True, reload_data=False, balance_data=False)
+    parser.set_defaults(
+        on_cluster=False,
+        on_polyaxon=False,
+        weighted_loss=True,
+        reload_data=False,
+        balance_data=False,
+        mean_embedding=False
+    )
     cfg, _ = parser.parse_known_args()
 
     return cfg
@@ -85,12 +93,13 @@ def train(cfg, model_name):
     wandb.config.update(cfg)
 
     loggers = []
-    if cfg.on_cluster:
+    if cfg.on_polyaxon:
         from common.plx_logger import PolyaxonLogger
-        loggers.append(WandbLogger(save_dir=cfg.logdir))
         poly_logger = PolyaxonLogger(cfg)
         loggers.append(poly_logger)
         cfg.logdir = str(poly_logger.output_path / poly_logger.name / f'version_{poly_logger.version}')
+    if cfg.on_cluster:
+        loggers.append(WandbLogger(save_dir=cfg.logdir))
     loggers.append(TensorBoardLogger(save_dir=cfg.logdir))
     print(f"Logdir: {cfg.logdir}")
 
