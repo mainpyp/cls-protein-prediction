@@ -181,7 +181,7 @@ def main():
     cfg.num_heads = 8
     cfg.depth = 24
     cfg.depth_token_only = 2
-    cfg.clip_sequence = 2000
+    cfg.clip_sequence = 1500
     train(cfg, model_name="CaiT-L")
 
 if __name__ == '__main__':
