@@ -91,7 +91,7 @@ def load_cfg():
 
     return cfg
 
-def train(cfg, model_name):
+def train(cfg):
     loggers = []
     if cfg.on_polyaxon:
         from common.plx_logger import PolyaxonLogger
@@ -111,6 +111,7 @@ def train(cfg, model_name):
     callbacks = [
         ModelCheckpoint(
             dirpath=str(ckpt_dir),
+            filename=cfg.model+"-{epoch}-{val_acc:.2f}",
             monitor=cfg.early_stopping_metric,
             mode="max"
         ),
@@ -126,18 +127,18 @@ def train(cfg, model_name):
     ]
 
     dataset = TMH(cfg=cfg)
-    print(f"loading model {model_name}...")
-    if model_name == "MLP":
+    print(f"loading model {cfg.model}...")
+    if cfg.model == "MLP":
         assert cfg.mean_embedding
         model = MLP(cfg=cfg)
-    elif model_name == "CNN":
+    elif cfg.model == "CNN":
         assert cfg.mean_embedding
         model = CNN(cfg=cfg)
-    elif "CaiT" in model_name:
+    elif "CaiT" in cfg.model:
         assert cfg.batch_size == 1
         model = CaiT(cfg=cfg)
     else:
-        raise RuntimeError(f"Unsupported model {model_name}")
+        raise RuntimeError(f"Unsupported model {cfg.model}")
     print("loading module...")
     module = CaitModule(cfg=cfg, model=model)
 
@@ -150,7 +151,7 @@ def train(cfg, model_name):
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-    print(f"start fitting {model_name} to TMH dataset...")
+    print(f"start fitting {cfg.model} to TMH dataset...")
     trainer.fit(module, dataset, ckpt_path=None if cfg.checkpoint == "" else cfg.checkpoint)
 
     print("start testing...")
@@ -161,34 +162,40 @@ def train(cfg, model_name):
 
 def main():
     cfg = load_cfg()
-    # train(cfg, model_name="MLP")
-    # train(cfg, model_name="CNN")
+    cfg.model = "MLP"
+    # train(cfg)
+    cfg.model = "CNN"
+    # train(cfg)
 
     # can't currently train transformers with minibatches
     cfg.batch_size = 1
     cfg.mean_embedding = False
 
+    cfg.model = "CaiT-XS"
     cfg.num_heads = 1
     cfg.depth = 4
     cfg.depth_token_only = 1
-    train(cfg, model_name="CaiT-XS")
+    train(cfg)
 
+    cfg.model = "CaiT-S"
     cfg.num_heads = 2
     cfg.depth = 12
     cfg.depth_token_only = 1
-    train(cfg, model_name="CaiT-S")
+    train(cfg)
 
+    cfg.model = "CaiT-M"
     cfg.num_heads=4
     cfg.depth=24
     cfg.depth_token_only=2
     cfg.clip_sequence = 3000
-    train(cfg, model_name="CaiT-M")
+    train(cfg)
 
+    cfg.model = "CaiT-L"
     cfg.num_heads = 8
     cfg.depth = 24
     cfg.depth_token_only = 2
     cfg.clip_sequence = 1500
-    train(cfg, model_name="CaiT-L")
+    train(cfg)
 
 if __name__ == '__main__':
     main()

@@ -15,11 +15,12 @@ from torch.utils.data import Dataset, DataLoader, random_split
 
 
 class TMHLoader(Dataset):
-    def __init__(self, df, db, mean_embedding=False):
+    def __init__(self, df, db, mean_embedding=False, debug=False):
         super().__init__()
         self.df = df
         self.db = db
         self.mean_embedding = mean_embedding
+        self.debug = debug
 
     def __len__(self):
         return len(self.df)
@@ -33,10 +34,13 @@ class TMHLoader(Dataset):
         label = self.df.loc[item, "class"]
         if self.mean_embedding:
             embedding = embedding.mean(axis=0, keepdims=True)
-        return embedding, label
+        if self.debug:
+            return embedding, self.df.loc[item]
+        else:
+            return embedding, label
 
 class TMH(LightningDataModule):
-    def __init__(self, cfg):
+    def __init__(self, cfg, debug=False):
         super().__init__()
 
         self.cfg = cfg
@@ -47,6 +51,7 @@ class TMH(LightningDataModule):
             'TM': 3
         }
         self.reverse_label_mappings = {val: key for key, val in self.label_mappings.items()}
+        self.debug = debug
 
     def prepare_data(self):
         root = Path(self.cfg.data_root)
@@ -63,7 +68,7 @@ class TMH(LightningDataModule):
         self.weights = self._calculate_weights(df)
 
         embeddings = h5py.File(root / "embeddings.h5")
-        dataloader = TMHLoader(df, embeddings, self.cfg.mean_embedding)
+        dataloader = TMHLoader(df, embeddings, self.cfg.mean_embedding, debug=self.debug)
         val_items = int(len(dataloader) * self.cfg.dataset_val_percentage)
         test_items = int(len(dataloader) * self.cfg.dataset_test_percentage)
         train_items = len(dataloader)-val_items-test_items
