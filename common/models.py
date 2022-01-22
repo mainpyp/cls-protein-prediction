@@ -12,7 +12,6 @@ class MLP(nn.Module):
         self.flatten = nn.Flatten()
 
     def forward(self, x):
-        x = x.mean(dim=1, keepdim=True)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
@@ -33,7 +32,6 @@ class CNN(nn.Module):
         self.fc_fin = nn.Linear(256, 4)
 
     def forward(self, x):
-        x = x.mean(dim=1, keepdim=True)
         x = F.relu( self.conv1(x) )
         x = self.pool(x)
         x = F.relu( self.conv2(x) )
