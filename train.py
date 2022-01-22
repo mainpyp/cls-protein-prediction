@@ -36,7 +36,7 @@ def load_cfg():
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DATALOADER ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     dataloader_group = parser.add_argument_group(title='Dataloader options')
     dataloader_group.add_argument("--num_workers", type=int, default=0)
-    dataloader_group.add_argument("--batch_size", type=int, default=32)
+    dataloader_group.add_argument("--batch_size", type=int, default=16)
     dataloader_group.add_argument("--data_root", type=str, default=".")
     dataloader_group.add_argument("--num_classes", type=int, default=4)
     dataloader_group.add_argument("--dataset_val_percentage", type=float, default=0.1)
@@ -99,7 +99,7 @@ def train(cfg, model_name):
         loggers.append(poly_logger)
         cfg.logdir = str(poly_logger.output_path / poly_logger.name / f'version_{poly_logger.version}')
     if cfg.on_cluster:
-        run = wandb.init(reinit=True, project=f"pp2-{model_name}")
+        run = wandb.init(reinit=True, project=f"pp2")
         wandb.config.update(cfg)
         loggers.append(WandbLogger(save_dir=cfg.logdir))
     loggers.append(TensorBoardLogger(save_dir=cfg.logdir))
@@ -128,10 +128,13 @@ def train(cfg, model_name):
     dataset = TMH(cfg=cfg)
     print(f"loading model {model_name}...")
     if model_name == "MLP":
+        assert cfg.mean_embedding
         model = MLP(cfg=cfg)
     elif model_name == "CNN":
+        assert cfg.mean_embedding
         model = CNN(cfg=cfg)
     elif "CaiT" in model_name:
+        assert cfg.batch_size == 1
         model = CaiT(cfg=cfg)
     else:
         raise RuntimeError(f"Unsupported model {model_name}")
@@ -144,6 +147,9 @@ def train(cfg, model_name):
         gpus=cfg.gpus if torch.cuda.is_available() else 0,
     )
 
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
     print(f"start fitting {model_name} to TMH dataset...")
     trainer.fit(module, dataset, ckpt_path=None if cfg.checkpoint == "" else cfg.checkpoint)
 
@@ -155,8 +161,8 @@ def train(cfg, model_name):
 
 def main():
     cfg = load_cfg()
-    train(cfg, model_name="MLP")
-    train(cfg, model_name="CNN")
+    # train(cfg, model_name="MLP")
+    # train(cfg, model_name="CNN")
 
     # can't currently train transformers with minibatches
     cfg.batch_size = 1
