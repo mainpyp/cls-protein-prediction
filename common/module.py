@@ -54,15 +54,14 @@ class CaitModule(LightningModule):
         self.log(f"{mode}_loss", loss)
         return {
             f"{mode}_loss": loss,
-            f"{mode}_pred": y_hat,
-            f"{mode}_label": label
+            f"{mode}_pred": y_hat.detach().cpu(),
+            f"{mode}_label": label.detach().cpu()
         }
 
     def _generic_epoch_end(self, outputs, mode):
-        preds = torch.cat([d[f"{mode}_pred"].argmax(dim=1) for d in outputs]).detach().cpu().int().numpy()
-        labels = torch.cat([d[f"{mode}_label"] for d in outputs]).detach().cpu().int().numpy()
+        preds = torch.cat([d[f"{mode}_pred"].argmax(dim=1) for d in outputs]).int().numpy()
+        labels = torch.cat([d[f"{mode}_label"] for d in outputs]).int().numpy()
         cm = ConfusionMatrix(actual_vector=labels, predict_vector=preds)
-        # TODO: log cm image
         metrics = {
             f"{mode}_acc": cm.ACC_Macro,
             f"{mode}_tpr_micro": cm.TPR_Micro,
