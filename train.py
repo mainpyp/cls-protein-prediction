@@ -43,7 +43,7 @@ def load_cfg():
     dataloader_group.add_argument("--dataset_test_percentage", type=float, default=0.1)
     dataloader_group.add_argument("--reload_data", action="store_true")
     dataloader_group.add_argument("--balance_data", action="store_true")
-    dataloader_group.add_argument("--mean_embedding", action="store_true")
+    dataloader_group.add_argument("--no-mean_embedding", dest="mean_embedding", action="store_false")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODEL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     model_group = parser.add_argument_group(title='Model options')
@@ -82,7 +82,7 @@ def load_cfg():
         weighted_loss=True,
         reload_data=False,
         balance_data=False,
-        mean_embedding=False
+        mean_embedding=True
     )
     cfg, _ = parser.parse_known_args()
 
@@ -154,20 +154,29 @@ def main():
     cfg = load_cfg()
     train(cfg, model_name="MLP")
     train(cfg, model_name="CNN")
+
+    # can't currently train transformers with minibatches
     cfg.batch_size = 1
-    # train(cfg, model_name="CaiT-L")
-    # cfg.num_heads=4
-    # cfg.depth=24
-    # cfg.depth_token_only=2
-    # train(cfg, model_name="CaiT-M")
-    # cfg.num_heads = 4
-    # cfg.depth = 12
-    # cfg.depth_token_only = 2
-    # train(cfg, model_name="CaiT-S")
+
     cfg.num_heads = 2
     cfg.depth = 8
     cfg.depth_token_only = 1
     train(cfg, model_name="CaiT-XS")
+
+    cfg.num_heads = 4
+    cfg.depth = 12
+    cfg.depth_token_only = 2
+    train(cfg, model_name="CaiT-S")
+
+    cfg.num_heads=4
+    cfg.depth=24
+    cfg.depth_token_only=2
+    train(cfg, model_name="CaiT-M")
+
+    cfg.num_heads = 8
+    cfg.depth = 24
+    cfg.depth_token_only = 2
+    train(cfg, model_name="CaiT-L")
 
 if __name__ == '__main__':
     main()
