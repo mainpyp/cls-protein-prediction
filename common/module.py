@@ -45,7 +45,7 @@ class CaitModule(LightningModule):
             y_hat = self.model(embed)
 
         if self.cfg.weighted_loss:
-            loss = F.cross_entropy(y_hat, label, weight=self.trainer.datamodule.weights)
+            loss = F.cross_entropy(y_hat, label, weight=self.trainer.datamodule.weights.to(y_hat.device))
         else:
             loss = F.cross_entropy(y_hat, label)
 
