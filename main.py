@@ -1,21 +1,19 @@
-import argparse
 import hashlib
-from typing import List
-from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
 from io import StringIO
+from typing import List
+
 import h5py
 import numpy as np
-import torch.nn as nn
 import torch
-import torch.nn.functional as F
-from common.models import *
+from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
+
 from common.cait_models import CaiT
+from common.models import *
 from common.module import CaitModule
-
-
 ################# ArgumentParser #################
 from train import load_cfg
+
 cfg = load_cfg()
 
 
@@ -76,7 +74,7 @@ def load_model(model_type="CAIT") -> CaitModule:
     elif model_type == "CNN":
         model = CNN(cfg)
     module = CaitModule(cfg, model)
-    ckpt = torch.load(f"models/{model_type}.ckpt")
+    ckpt = torch.load(f"models/{model_type}.ckpt", map_location="cpu")
     module.load_state_dict(ckpt["state_dict"])
     module = module.eval()
     return module
@@ -88,7 +86,7 @@ def predict(data: List[dict], module: nn.Module) -> dict:
         result_predicted = dict()
         for each_dict in data:
             emb_as_tensor = torch.Tensor(each_dict["embedding"]).unsqueeze(dim=0)
-            prediction_output = module.model.forward(emb_as_tensor)
+            prediction_output, attn = module.model.forward(emb_as_tensor)
             probability_output = F.softmax(prediction_output)
             confidence = torch.max(probability_output)
             predicted = torch.argmax(probability_output)
