@@ -163,9 +163,9 @@ def train(cfg):
 def main():
     cfg = load_cfg()
     cfg.model = "MLP"
-    # train(cfg)
+    train(cfg)
     cfg.model = "CNN"
-    # train(cfg)
+    train(cfg)
 
     # can't currently train transformers with minibatches
     cfg.batch_size = 1
