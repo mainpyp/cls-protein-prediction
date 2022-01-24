@@ -141,3 +141,5 @@ logs
 *.fasta
 wandb
 *.ckpt
+.idea/misc.xml
+.idea/cls-protein-prediction.iml
