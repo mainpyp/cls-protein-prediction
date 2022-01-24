@@ -3,7 +3,6 @@
 # and https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/cait.py
 # Copyright (c) 2015-present, Facebook, Inc.
 # All rights reserved.
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -52,13 +51,30 @@ class Attention(nn.Module):
         x_cls = (attn @ v).transpose(1, 2).reshape(B, 1 if self.class_attention else N, C)
         x_cls = self.proj(x_cls)
         x_cls = self.proj_drop(x_cls)
-        return x_cls
+        return x_cls, attn
 
 class LayerScale(nn.Module):
-    def __init__(self, dim, attentionBlock, mlp_ratio=4., drop=0., drop_path=0., init_values=1e-4):
+    def __init__(self,
+                 dim,
+                 num_heads,
+                 qkv_bias,
+                 class_attention,
+                 attn_drop,
+                 mlp_ratio=4.,
+                 drop=0.,
+                 drop_path=0.,
+                 init_values=1e-4):
         super().__init__()
         self.norm1 = nn.LayerNorm(dim)
-        self.attn = attentionBlock
+        self.attn = Attention(
+            dim=dim,
+            num_heads=num_heads,
+            qkv_bias=qkv_bias,
+            class_attention=class_attention,
+            talking_heads=not class_attention,
+            attn_drop=attn_drop,
+            proj_drop=drop
+        )
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = nn.LayerNorm(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
@@ -66,76 +82,71 @@ class LayerScale(nn.Module):
         self.gamma_1 = nn.Parameter(init_values * torch.ones((dim)), requires_grad=True)
         self.gamma_2 = nn.Parameter(init_values * torch.ones((dim)), requires_grad=True)
 
-    def forward(self, x, x_cls: Optional[torch.Tensor] = None):
-        if x_cls is not None:
-            u = torch.cat((x_cls, x), dim=1)
-            x_cls = x_cls + self.drop_path(self.gamma_1 * self.attn(self.norm1(u)))
-            x = x_cls + self.drop_path(self.gamma_2 * self.mlp(self.norm2(x_cls)))
-        else:
-            x = x + self.drop_path(self.gamma_1 * self.attn(self.norm1(x)))
-            x = x + self.drop_path(self.gamma_2 * self.mlp(self.norm2(x)))
-        return x
-    
-class CaiT(nn.Module):
-    def __init__(self,
-                 num_classes=4,
-                 num_heads=8,
-                 embed_dim=1024,
-                 depth=24,
-                 depth_token_only=2,
-                 mlp_ratio=4.,
-                 mlp_ratio_token_only=4.0,
-                 qkv_bias=True,
-                 qk_scale=None,
-                 drop_rate=0.,
-                 attn_drop_rate=0.,
-                 drop_path_rate=0.,
-                 init_scale=1e-5):
-        super().__init__()
-            
-        self.num_classes = num_classes
-        self.num_features = self.embed_dim = embed_dim
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+    def forward(self, x):
+        x_cls, attn = self.attn(self.norm1(x))
+        x = x + self.drop_path(self.gamma_1 * x_cls)
+        x = x + self.drop_path(self.gamma_2 * self.mlp(self.norm2(x)))
+        return x, attn
 
-        dpr = [drop_path_rate for i in range(depth)] 
+class LayerScaleEmbeddingOnly(LayerScale):
+    def __init__(self, cfg, dpr):
+        super().__init__(
+            dim=cfg.embed_dim,
+            num_heads=cfg.num_heads,
+            qkv_bias=cfg.qkv_bias,
+            class_attention=False,
+            attn_drop=cfg.attn_drop_rate,
+            mlp_ratio=cfg.mlp_ratio,
+            drop=cfg.drop_rate,
+            drop_path=dpr,
+            init_values=cfg.init_scale
+        )
+
+
+class LayerScaleClsToken(LayerScale):
+    def __init__(self, cfg):
+        super().__init__(
+            dim=cfg.embed_dim,
+            num_heads=cfg.num_heads,
+            qkv_bias=cfg.qkv_bias,
+            class_attention=True,
+            attn_drop=0.0,
+            mlp_ratio=cfg.mlp_ratio_token_only,
+            drop=0.0,
+            drop_path=0.0,
+            init_values=cfg.init_scale
+        )
+
+    def forward(self, x, x_cls):
+        u = torch.cat((x_cls, x), dim=1)
+        x_cls, attn = self.attn(self.norm1(u))
+        x_cls = x_cls + self.drop_path(self.gamma_1 * x_cls)
+        x = x_cls + self.drop_path(self.gamma_2 * self.mlp(self.norm2(x_cls)))
+        return x, attn
+
+
+class CaiT(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+
+        self.cfg = cfg
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, cfg.embed_dim))
+
+        self.reducer = nn.Identity() if cfg.embed_dim == 1024 else nn.Linear(1024, cfg.embed_dim)
+
+        dpr = [cfg.drop_path_rate for i in range(cfg.depth)]
         self.blocks = nn.ModuleList([
-            LayerScale(
-                dim=embed_dim,
-                attentionBlock=Attention(
-                    embed_dim,
-                    num_heads=num_heads,
-                    qkv_bias=qkv_bias,
-                    qk_scale=qk_scale,
-                    class_attention=False,
-                    talking_heads=True,
-                    attn_drop=attn_drop_rate,
-                    proj_drop=drop_rate),
-                mlp_ratio=mlp_ratio,
-                drop=drop_rate,
-                drop_path=dpr[i],
-                init_values=init_scale)
-            for i in range(depth)])
+            LayerScaleEmbeddingOnly(cfg=cfg, dpr=dpr[i])
+            for i in range(cfg.depth)
+        ])
 
         self.blocks_token_only = nn.ModuleList([
-            LayerScale(
-                dim=embed_dim,
-                attentionBlock=Attention(
-                    embed_dim,
-                    num_heads=num_heads,
-                    qkv_bias=qkv_bias,
-                    qk_scale=qk_scale,
-                    class_attention=True,
-                    talking_heads=False,
-                    attn_drop=0.0,
-                    proj_drop=0.0),
-                mlp_ratio=mlp_ratio_token_only,
-                drop=0.0,
-                drop_path=0.0,
-                init_values=init_scale)
-            for i in range(depth_token_only)])
+            LayerScaleClsToken(cfg=cfg)
+            for i in range(cfg.depth_token_only)
+        ])
             
-        self.norm = nn.LayerNorm(embed_dim)
-        self.head = nn.Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity()
+        self.norm = nn.LayerNorm(cfg.embed_dim)
+        self.head = nn.Linear(cfg.embed_dim, cfg.num_classes) if cfg.num_classes > 0 else nn.Identity()
 
         trunc_normal_(self.cls_token, std=.02)
         self.apply(self._init_weights)
@@ -156,24 +167,30 @@ class CaiT(nn.Module):
     def forward(self, x):
         B, N, C = x.shape
 
+        x = self.reducer(x) # no ReLU here on purpose
+
+        # due to GPU constraints we can't load infinitely long sequences into memory
+        if N > self.cfg.clip_sequence:
+            x = x[:,:self.cfg.clip_sequence,:]
+
         cls_tokens = self.cls_token.expand(B, -1, -1)
+        attn_weights = []
 
         # TODO: should we have pos embedding?
         # x = x + self.pos_embed
         # x = self.pos_drop(x)
 
-        # reduce word length to 1
-        x = x.mean(dim=1, keepdim=True)
-
         for i, blk in enumerate(self.blocks):
-            x = blk(x)
+            x, attn = blk(x)
+            attn_weights.append(attn)
 
         for i, blk in enumerate(self.blocks_token_only):
-            cls_tokens = blk(x, cls_tokens)
+            cls_tokens, attn = blk(x, cls_tokens)
+            attn_weights.append(attn)
 
         x = torch.cat((cls_tokens, x), dim=1)
 
         x = self.norm(x)
         x = x[:, 0] # we discard all outputs except the cls token one
         x = self.head(x)
-        return x
+        return x, attn_weights
