@@ -169,7 +169,7 @@ def main():
 
     # can't currently train transformers with minibatches
     cfg.batch_size = 1
-    cfg.mean_embedding = False
+    cfg.mean_embedding = True
 
     cfg.model = "CaiT-XS"
     cfg.num_heads = 1
