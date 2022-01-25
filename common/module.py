@@ -71,7 +71,8 @@ class CaitModule(LightningModule):
         return self._generic_step(batch, "test")
 
     def test_epoch_end(self, outputs):
-        torch.save(outputs, Path(self.cfg.logdir) / "test_outputs.pkl")
+        torch.save(outputs, Path(self.cfg.logdir) / f"{self.cfg.model}-test_outputs.pkl")
+        print(f"saved test outputs to {self.cfg.logdir}")
         return self._generic_epoch_end(outputs, "test")
 
     def on_save_checkpoint(self, checkpoint):

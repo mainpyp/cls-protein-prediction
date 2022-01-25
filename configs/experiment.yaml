@@ -41,5 +41,6 @@ run:
     --gpus {{ gpus }} \
     --learning_rate {{ lr }} \
     --embed_dim {{ embed_dim }} \
+    --reload_data \
     --on_cluster \
     --on_polyaxon
