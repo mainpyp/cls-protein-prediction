@@ -17,3 +17,6 @@ logs
 wandb
 default
 default_None
+notebooks
+models
+plots

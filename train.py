@@ -162,10 +162,10 @@ def train(cfg):
 
 def main():
     cfg = load_cfg()
-    cfg.model = "MLP"
-    train(cfg)
-    cfg.model = "CNN"
-    train(cfg)
+    # cfg.model = "MLP"
+    # train(cfg)
+    # cfg.model = "CNN"
+    # train(cfg)
 
     # can't currently train transformers with minibatches
     cfg.batch_size = 1
@@ -177,25 +177,25 @@ def main():
     cfg.depth_token_only = 1
     train(cfg)
 
-    cfg.model = "CaiT-S"
-    cfg.num_heads = 2
-    cfg.depth = 12
-    cfg.depth_token_only = 1
-    train(cfg)
-
-    cfg.model = "CaiT-M"
-    cfg.num_heads=4
-    cfg.depth=24
-    cfg.depth_token_only=2
-    cfg.clip_sequence = 3000
-    train(cfg)
-
-    cfg.model = "CaiT-L"
-    cfg.num_heads = 8
-    cfg.depth = 24
-    cfg.depth_token_only = 2
-    cfg.clip_sequence = 1500
-    train(cfg)
+    # cfg.model = "CaiT-S"
+    # cfg.num_heads = 2
+    # cfg.depth = 12
+    # cfg.depth_token_only = 1
+    # train(cfg)
+    #
+    # cfg.model = "CaiT-M"
+    # cfg.num_heads=4
+    # cfg.depth=24
+    # cfg.depth_token_only=2
+    # cfg.clip_sequence = 3000
+    # train(cfg)
+    #
+    # cfg.model = "CaiT-L"
+    # cfg.num_heads = 8
+    # cfg.depth = 24
+    # cfg.depth_token_only = 2
+    # cfg.clip_sequence = 1500
+    # train(cfg)
 
 if __name__ == '__main__':
     main()

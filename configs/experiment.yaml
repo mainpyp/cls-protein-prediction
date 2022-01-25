@@ -30,7 +30,7 @@ declarations:
   data_root: /data/CholecT50-challenge-train/pp2/tmh
   gpus: 1
   lr: 1e-6
-  embed_dim: 256
+  embed_dim: 1024
 
 run:
   cmd: LOCAL_RANK=0 \
