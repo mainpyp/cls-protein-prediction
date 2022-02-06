@@ -14,27 +14,31 @@ from common.module import CaitModule
 
 
 def load_cfg():
-    parser = configargparse.ArgParser(config_file_parser_class=configargparse.YAMLConfigFileParser)
-    parser.add('-c', is_config_file=True, help='config file path')
+    parser = configargparse.ArgParser(
+        config_file_parser_class=configargparse.YAMLConfigFileParser
+    )
+    parser.add("-c", is_config_file=True, help="config file path")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    mode_group = parser.add_argument_group(title='Mode options')
-    mode_group.add_argument("--mode", type=str, default='TRAIN')
+    mode_group = parser.add_argument_group(title="Mode options")
+    mode_group.add_argument("--mode", type=str, default="TRAIN")
     mode_group.add_argument("--on_cluster", action="store_true")
     mode_group.add_argument("--on_polyaxon", action="store_true")
     mode_group.add_argument("--logdir", type=str, default="logs")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TRAINING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    training_group = parser.add_argument_group(title='Training options')
+    training_group = parser.add_argument_group(title="Training options")
     training_group.add_argument("--gpus", type=int, default=-1)
     training_group.add_argument("--early_stopping_metric", type=str, default="val_acc")
-    training_group.add_argument("--optimizer", type=str, default='Adam')
+    training_group.add_argument("--optimizer", type=str, default="Adam")
     training_group.add_argument("--learning_rate", type=float, default=1e-5)
     training_group.add_argument("--checkpoint", type=str, default="")
-    training_group.add_argument('--no-weighted_loss', dest='weighted_loss', action='store_false')
+    training_group.add_argument(
+        "--no-weighted_loss", dest="weighted_loss", action="store_false"
+    )
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DATALOADER ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    dataloader_group = parser.add_argument_group(title='Dataloader options')
+    dataloader_group = parser.add_argument_group(title="Dataloader options")
     dataloader_group.add_argument("--num_workers", type=int, default=0)
     dataloader_group.add_argument("--batch_size", type=int, default=16)
     dataloader_group.add_argument("--data_root", type=str, default=".")
@@ -43,11 +47,13 @@ def load_cfg():
     dataloader_group.add_argument("--dataset_test_percentage", type=float, default=0.1)
     dataloader_group.add_argument("--reload_data", action="store_true")
     dataloader_group.add_argument("--balance_data", action="store_true")
-    dataloader_group.add_argument("--no-mean_embedding", dest="mean_embedding", action="store_false")
+    dataloader_group.add_argument(
+        "--no-mean_embedding", dest="mean_embedding", action="store_false"
+    )
     dataloader_group.add_argument("--clip_sequence", type=int, default=3500)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODEL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    model_group = parser.add_argument_group(title='Model options')
+    model_group = parser.add_argument_group(title="Model options")
     model_group.add_argument("--model", type=str, default="CNN")
     model_group.add_argument("--input_dim", type=int, default=25)
     model_group.add_argument("--hidden_dims_list", type=str, default="20,10")
@@ -56,11 +62,11 @@ def load_cfg():
     model_group.add_argument("--num_heads", type=int, default=8)
     model_group.add_argument("--depth", type=int, default=24)
     model_group.add_argument("--depth_token_only", type=int, default=2)
-    model_group.add_argument("--mlp_ratio", type=float, default=4.)
+    model_group.add_argument("--mlp_ratio", type=float, default=4.0)
     model_group.add_argument("--mlp_ratio_token_only", type=float, default=4.0)
-    model_group.add_argument("--drop_rate", type=float, default=0.)
-    model_group.add_argument("--attn_drop_rate", type=float, default=0.)
-    model_group.add_argument("--drop_path_rate", type=float, default=0.)
+    model_group.add_argument("--drop_rate", type=float, default=0.0)
+    model_group.add_argument("--attn_drop_rate", type=float, default=0.0)
+    model_group.add_argument("--drop_path_rate", type=float, default=0.0)
     model_group.add_argument("--init_scale", type=float, default=1e-5)
     model_group.add_argument("--no-qkv_bias", dest="qkv_bias", action="store_false")
     # TODO: add options for CNN, MLP, CaiT
@@ -68,7 +74,9 @@ def load_cfg():
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PREDICTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     parser.add_argument("--fasta", type=str, help="path_to_fasta")
     parser.add_argument("--emb", type=str, help="path_to_embeddings")
-    parser.add_argument("--output", type=str, help="path_to_output", default="./output.tsv")
+    parser.add_argument(
+        "--output", type=str, help="path_to_output", default="./output.tsv"
+    )
     parser.add_argument(
         "--model_type",
         type=str,
@@ -85,19 +93,25 @@ def load_cfg():
         reload_data=False,
         balance_data=False,
         mean_embedding=True,
-        qkv_bias=True
+        qkv_bias=True,
     )
     cfg, _ = parser.parse_known_args()
 
     return cfg
 
+
 def train(cfg):
     loggers = []
     if cfg.on_polyaxon:
         from common.plx_logger import PolyaxonLogger
+
         poly_logger = PolyaxonLogger(cfg)
         loggers.append(poly_logger)
-        cfg.logdir = str(poly_logger.output_path / poly_logger.name / f'version_{poly_logger.version}')
+        cfg.logdir = str(
+            poly_logger.output_path
+            / poly_logger.name
+            / f"version_{poly_logger.version}"
+        )
     if cfg.on_cluster:
         run = wandb.init(reinit=True, project=f"pp2")
         wandb.config.update(cfg)
@@ -111,19 +125,14 @@ def train(cfg):
     callbacks = [
         ModelCheckpoint(
             dirpath=str(ckpt_dir),
-            filename=cfg.model+"-{epoch}-{val_acc:.2f}",
-            monitor=cfg.early_stopping_metric,
-            mode="max"
-        ),
-        EarlyStopping(
+            filename=cfg.model + "-{epoch}-{val_acc:.2f}",
             monitor=cfg.early_stopping_metric,
             mode="max",
-            min_delta=0.01,
-            patience=5
         ),
-        TQDMProgressBar(
-            refresh_rate=50
-        )
+        EarlyStopping(
+            monitor=cfg.early_stopping_metric, mode="max", min_delta=0.01, patience=5
+        ),
+        TQDMProgressBar(refresh_rate=50),
     ]
 
     dataset = TMH(cfg=cfg)
@@ -152,7 +161,9 @@ def train(cfg):
         torch.cuda.empty_cache()
 
     print(f"start fitting {cfg.model} to TMH dataset...")
-    trainer.fit(module, dataset, ckpt_path=None if cfg.checkpoint == "" else cfg.checkpoint)
+    trainer.fit(
+        module, dataset, ckpt_path=None if cfg.checkpoint == "" else cfg.checkpoint
+    )
 
     print("start testing...")
     trainer.test(module, dataset)
@@ -160,16 +171,17 @@ def train(cfg):
     if cfg.on_cluster:
         run.finish()
 
+
 def main():
     cfg = load_cfg()
-    cfg.model = "MLP"
-    train(cfg)
-    cfg.model = "CNN"
-    train(cfg)
+    # cfg.model = "MLP"
+    # train(cfg)
+    # cfg.model = "CNN"
+    # train(cfg)
 
     # can't currently train transformers with minibatches
     cfg.batch_size = 1
-    cfg.mean_embedding = False
+    cfg.mean_embedding = True
 
     cfg.model = "CaiT-XS"
     cfg.num_heads = 1
@@ -177,25 +189,26 @@ def main():
     cfg.depth_token_only = 1
     train(cfg)
 
-    cfg.model = "CaiT-S"
-    cfg.num_heads = 2
-    cfg.depth = 12
-    cfg.depth_token_only = 1
-    train(cfg)
+    # cfg.model = "CaiT-S"
+    # cfg.num_heads = 2
+    # cfg.depth = 12
+    # cfg.depth_token_only = 1
+    # train(cfg)
+    #
+    # cfg.model = "CaiT-M"
+    # cfg.num_heads=4
+    # cfg.depth=24
+    # cfg.depth_token_only=2
+    # cfg.clip_sequence = 3000
+    # train(cfg)
+    #
+    # cfg.model = "CaiT-L"
+    # cfg.num_heads = 8
+    # cfg.depth = 24
+    # cfg.depth_token_only = 2
+    # cfg.clip_sequence = 1500
+    # train(cfg)
 
-    cfg.model = "CaiT-M"
-    cfg.num_heads=4
-    cfg.depth=24
-    cfg.depth_token_only=2
-    cfg.clip_sequence = 3000
-    train(cfg)
 
-    cfg.model = "CaiT-L"
-    cfg.num_heads = 8
-    cfg.depth = 24
-    cfg.depth_token_only = 2
-    cfg.clip_sequence = 1500
-    train(cfg)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
